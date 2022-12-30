@@ -52,7 +52,7 @@ class StartCommand(GatewayChainApiManager): ##@@##
         return any([s.uses_gateway_generic_connector()
                     for s in exchange_settings])
 
-                                                                                                    ##@@## self 是hummingbotapplication context, 不是 对象自身, 故其中 create command中，已经将context上下文中的 strategy_config_map 初始化好了
+     ##@@## self 是hummingbotapplication context, 不是 对象自身, 故其中 create command中，已经将context上下文中的 strategy_config_map 初始化好了
     def start(self,  # type: HummingbotApplication
               log_level: Optional[str] = None,
               restore: Optional[bool] = False,
