@@ -253,7 +253,7 @@ class StartCommand(GatewayChainApiManager): ##@@##
         else:
             start_strategy: Callable = get_strategy_starter_file(strategy_name)                     ##@@##  加载 strategy 文件
             if strategy_name in settings.STRATEGIES:
-                start_strategy(self)                                                                ##@@## !!!!! 执行， call the strategy/xxx/start.py :: start()
+                start_strategy(self)                                                                ##@@## !!!!! 执行， call the strategy/xxx/start.py :: start(), call the strategy/xxx/start.py file
             else:
                 raise NotImplementedError
 

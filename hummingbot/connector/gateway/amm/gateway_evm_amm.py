@@ -489,7 +489,6 @@ class GatewayEVMAMM(ConnectorBase):
         return await self.get_quote_price(trading_pair, is_buy, amount, ignore_shim=ignore_shim) ##@@## 计入fee， 未计入 slippage， amountout/amountin
 
 
-    ##@@## !!
     def buy(self, trading_pair: str, amount: Decimal, order_type: OrderType, price: Decimal, **kwargs) -> str:  ##@@##
         """
         Buys an amount of base token for a given price (or cheaper).

@@ -35,7 +35,7 @@ s_decimal_neg_one = Decimal(-1)
 pmm_logger = None
 
 
-cdef class PureMarketMakingStrategy(StrategyBase): //##@@##
+cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
     OPTION_LOG_CREATE_ORDER = 1 << 3
     OPTION_LOG_MAKER_ORDER_FILLED = 1 << 4
     OPTION_LOG_STATUS_REPORT = 1 << 5

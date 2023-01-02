@@ -442,7 +442,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
             self._cancel_outdated_orders_task = safe_ensure_future(self.apply_gateway_transaction_cancel_interval())
 
     ##@@##
-    async def main(self, timestamp: float):         
+    async def main(self, timestamp: float):
         try:
             for order_level in range(0, self.order_levels):
                 # Calculate a mapping from market pair to list of active limit orders on the market.
@@ -521,7 +521,6 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                 return True
         return False
 
-    ##@@## !!!!!
     async def process_market_pair(self, timestamp: float, market_pair: MarketTradingPairTuple, active_orders: List, order_level: int):
         """
         For market pair being managed by this strategy object, do the following:

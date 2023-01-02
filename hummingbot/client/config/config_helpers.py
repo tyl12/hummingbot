@@ -514,7 +514,7 @@ def get_strategy_config_map(
     return config_map
 
 
-def get_strategy_starter_file(strategy: str) -> Callable:                       ##@@## !! 加载　strategy/start.py 文件
+def get_strategy_starter_file(strategy: str) -> Callable: ##@@## !! 加载执行　strategy/start.py 文件
     """
     Given the name of a strategy, find and load the `start` function in
     `hummingbot/strategy/{STRATEGY_NAME}/start.py` file.
