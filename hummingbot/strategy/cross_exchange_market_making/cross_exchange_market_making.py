@@ -363,6 +363,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         super().start(clock, timestamp)
         self._last_timestamp = timestamp
 
+    ##@@## !!
     def tick(self, timestamp: float):
         """
         Clock tick entry point.
@@ -417,11 +418,12 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
 
         if self.ready_for_new_trades():
             if self._main_task is None or self._main_task.done():
-                self._main_task = safe_ensure_future(self.main(timestamp))
+                self._main_task = safe_ensure_future(self.main(timestamp)) ##@@## !!!!!
 
         if self._cancel_outdated_orders_task is None or self._cancel_outdated_orders_task.done():
             self._cancel_outdated_orders_task = safe_ensure_future(self.apply_gateway_transaction_cancel_interval())
 
+    ##@@##
     async def main(self, timestamp: float):
         try:
             # Calculate a mapping from market pair to list of active limit orders on the market.
@@ -440,8 +442,8 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                     market_pair_to_active_orders[market_pair].append(limit_order)
 
             # Process each market pair independently.
-            for market_pair in self._market_pairs.values():
-                await self.process_market_pair(timestamp, market_pair, market_pair_to_active_orders[market_pair])
+            for market_pair in self._market_pairs.values():  ##@@##
+                await self.process_market_pair(timestamp, market_pair, market_pair_to_active_orders[market_pair])  ##@@##　!!!!!
 
             # log conversion rates every 5 minutes
             if self._last_conv_rates_logged + (60. * 5) < timestamp:
@@ -494,6 +496,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                 return True
         return False
 
+    ##@@## !!!!!
     async def process_market_pair(self, timestamp: float, market_pair: MarketTradingPairTuple, active_orders: List):
         """
         For market pair being managed by this strategy object, do the following:
@@ -527,9 +530,9 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
             # Mark the has_active_bid and has_active_ask flags
             is_buy = active_order.is_buy
             if is_buy:
-                has_active_bid = True
+                has_active_bid = True ##有效买单
             else:
-                has_active_ask = True
+                has_active_ask = True ## 卖单
 
             # Suppose the active order is hedged on the taker market right now, what's the average price the hedge
             # would happen?
@@ -538,9 +541,10 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                 is_buy,
                 active_order.quantity
             )
+            self.logger().warning(f"##@@## current_hedging_price= {current_hedging_price}, market_pair={market_pair}, {active_order.quantity}")
 
             # See if it's still profitable to keep the order on maker market. If not, remove it.
-            if not await self.check_if_still_profitable(market_pair, active_order, current_hedging_price):
+            if not await self.check_if_still_profitable(market_pair, active_order, current_hedging_price): ##@@##
                 continue
 
             if isinstance(self._config_map.order_refresh_mode, PassiveOrderRefreshMode):
@@ -564,7 +568,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
             self._anti_hysteresis_timers[market_pair] = timestamp + self._config_map.anti_hysteresis_duration
 
         # If there's both an active bid and ask, then there's no need to think about making new limit orders.
-        if has_active_bid and has_active_ask:
+        if has_active_bid and has_active_ask: ##　如果买卖单都在，则忽略本次挂单
             return
 
         # If there are pending taker orders, wait for them to complete
@@ -572,8 +576,10 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
             return
 
         # See if it's profitable to place a limit order on maker market.
-        await self.check_and_create_new_orders(market_pair, has_active_bid, has_active_ask)
+        await self.check_and_create_new_orders(market_pair, has_active_bid, has_active_ask) ##@@## !!!!!
 
+
+    ##@@## !!
     async def hedge_filled_maker_order(self, order_filled_event):
         """
         If a limit order previously made to the maker side has been filled, hedge it on the taker side.
@@ -641,6 +647,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         # Remove the cancelled, failed or expired taker order
         del self._taker_to_maker_order_ids[order_event.order_id]
 
+    ##@@## !!
     def did_fill_order(self, order_filled_event: OrderFilledEvent):
         order_id = order_filled_event.order_id
         exchange_trade_id = order_filled_event.exchange_trade_id
@@ -658,7 +665,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
 
                 self.hedge_tasks_cleanup()
                 self._hedge_maker_order_task = safe_ensure_future(
-                    self.hedge_filled_maker_order(order_filled_event)
+                    self.hedge_filled_maker_order(order_filled_event) ##@@##
                 )
 
     def did_cancel_order(self, order_canceled_event: OrderCancelledEvent):
@@ -673,6 +680,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         if order_expired_event.order_id in self._taker_to_maker_order_ids.keys():
             self.handle_unfilled_taker_order(order_expired_event)
 
+    ##@@##
     def did_complete_buy_order(self, order_completed_event: BuyOrderCompletedEvent):
         """
         Output log message when a bid order (on maker side or taker side) is completely taken.
@@ -1171,6 +1179,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
 
             return maker_market.quantize_order_amount(market_pair.maker.trading_pair, Decimal(order_amount))
 
+    ##@@## !!!!!
     async def get_market_making_price(self,
                                       market_pair: MarketTradingPairTuple,
                                       is_bid: bool,
@@ -1210,7 +1219,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                 )
                 price_above_bid = (ceil(top_bid_price / price_quantum) + 1) * price_quantum
 
-            if self.is_gateway_market(market_pair.taker):
+            if self.is_gateway_market(market_pair.taker):  ##@@## !!!!!! 从ｔａｋｅｒ　获取　ｐｒｉｃｅ！！！！！
                 taker_price = await taker_market.get_order_price(taker_trading_pair,
                                                                  False,
                                                                  size)
@@ -1231,7 +1240,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
             taker_price *= self.markettaker_to_maker_base_conversion_rate(market_pair)
 
             # you are buying on the maker market and selling on the taker market
-            maker_price = taker_price / (1 + self.min_profitability)
+            maker_price = taker_price / (1 + self.min_profitability)  ##@@## !!!!!
 
             # # If your bid is higher than highest bid price, reduce it to one tick above the top bid price
             if self.adjust_order_enabled:
@@ -1276,7 +1285,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
             taker_price *= self.markettaker_to_maker_base_conversion_rate(market_pair)
 
             # You are selling on the maker market and buying on the taker market
-            maker_price = taker_price * (1 + self.min_profitability)
+            maker_price = taker_price * (1 + self.min_profitability)  ##@@## !!!!!
 
             # If your ask is lower than the the top ask, increase it to just one tick below top ask
             if self.adjust_order_enabled:
@@ -1651,7 +1660,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
             bid_size = await self.get_market_making_size(market_pair, True)
 
             if bid_size > s_decimal_zero:
-                bid_price = await self.get_market_making_price(market_pair, True, bid_size)
+                bid_price = await self.get_market_making_price(market_pair, True, bid_size)  ##@@##
                 if not Decimal.is_nan(bid_price):
                     effective_hedging_price = await self.calculate_effective_hedging_price(
                         market_pair,

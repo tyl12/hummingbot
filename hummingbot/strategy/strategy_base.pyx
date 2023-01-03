@@ -114,7 +114,7 @@ cdef class RangePositionClosedListener(BaseStrategyEventListener):
 # </editor-fold>
 
 
-cdef class StrategyBase(TimeIterator):
+cdef class StrategyBase(TimeIterator): ##@@##
     BUY_ORDER_COMPLETED_EVENT_TAG = MarketEvent.BuyOrderCompleted.value
     SELL_ORDER_COMPLETED_EVENT_TAG = MarketEvent.SellOrderCompleted.value
     FUNDING_PAYMENT_COMPLETED_EVENT_TAG = MarketEvent.FundingPaymentCompleted.value
@@ -141,9 +141,9 @@ cdef class StrategyBase(TimeIterator):
     def __init__(self):
         super().__init__()
         self._sb_markets = set()
-        self._sb_create_buy_order_listener = BuyOrderCreatedListener(self)
-        self._sb_create_sell_order_listener = SellOrderCreatedListener(self)
-        self._sb_fill_order_listener = OrderFilledListener(self)
+        self._sb_create_buy_order_listener = BuyOrderCreatedListener(self)  ##@@## 跟进 orderlistener的处理逻辑
+        self._sb_create_sell_order_listener = SellOrderCreatedListener(self)  ##@@## 
+        self._sb_fill_order_listener = OrderFilledListener(self) ##@@##
         self._sb_fail_order_listener = OrderFailedListener(self)
         self._sb_cancel_order_listener = OrderCancelledListener(self)
         self._sb_expire_order_listener = OrderExpiredListener(self)
@@ -161,7 +161,7 @@ cdef class StrategyBase(TimeIterator):
 
         self._sb_delegate_lock = False
 
-        self._sb_order_tracker = OrderTracker()
+        self._sb_order_tracker = OrderTracker()  ##@@##　ordertracker　implementation 检查
 
     def init_params(self, *args, **kwargs):
         """
@@ -209,6 +209,7 @@ cdef class StrategyBase(TimeIterator):
 
         return sorted(past_trades, key=lambda x: x.timestamp)
 
+    ##@@## 如何传入的　market　报价数据?
     def market_status_data_frame(self, market_trading_pair_tuples: List[MarketTradingPairTuple]) -> pd.DataFrame:
         cdef:
             ConnectorBase market
@@ -237,6 +238,7 @@ cdef class StrategyBase(TimeIterator):
         except Exception:
             self.logger().error("Error formatting market stats.", exc_info=True)
 
+    ##@@##同上
     def wallet_balance_data_frame(self, market_trading_pair_tuples: List[MarketTradingPairTuple]) -> pd.DataFrame:
         cdef:
             ConnectorBase market
@@ -301,7 +303,7 @@ cdef class StrategyBase(TimeIterator):
         TimeIterator.c_start(self, clock, timestamp)
         self._sb_order_tracker.c_start(clock, timestamp)
 
-    cdef c_tick(self, double timestamp):
+    cdef c_tick(self, double timestamp): ##@@##   a running strategy module is called every second via its c_tick() method to check on the markets and wallets,
         TimeIterator.c_tick(self, timestamp)
         self._sb_order_tracker.c_tick(timestamp)
 

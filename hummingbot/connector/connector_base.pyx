@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from hummingbot.client.config.config_helpers import ClientConfigAdapter
 
 
+##@@##
 cdef class ConnectorBase(NetworkIterator):
     MARKET_EVENTS = [
         MarketEvent.ReceivedAsset,

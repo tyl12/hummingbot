@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Deque, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 
@@ -6,6 +7,8 @@ from hummingbot.core.data_type.common import OrderType, TradeType
 from hummingbot.core.data_type.order_candidate import OrderCandidate
 from hummingbot.core.event.events import OrderFilledEvent
 from hummingbot.strategy.script_strategy_base import ScriptStrategyBase
+from hummingbot.strategy.maker_taker_market_pair import MakerTakerMarketPair
+from hummingbot.strategy.market_trading_pair_tuple import MarketTradingPairTuple
 
 
 class SimpleXEMM(ScriptStrategyBase):
@@ -19,11 +22,19 @@ class SimpleXEMM(ScriptStrategyBase):
     and taker hedge price) dips below min_spread, the bot refreshes the order
     """
 
-    maker_exchange = "kucoin_paper_trade"
-    maker_pair = "ETH-USDT"
-    taker_exchange = "gate_io_paper_trade"
-    taker_pair = "ETH-USDT"
 
+    maker_exchange = "binance_paper_trade"
+    maker_pair = "BNB-USDT"
+    taker_exchange = "pancakeswap_binance-smart-chain_testnet" #"gate_io_paper_trade"
+    taker_pair = "WBNB-USDT" #"ETH-USDT"
+
+    """
+    maker_exchange = "binance"
+    maker_pair = "BNB-USDT"
+    taker_exchange = "pancakeswap_binance-smart-chain_mainnet"
+    taker_pair = "WBNB-USDT"
+    """
+    
     order_amount = 0.1                  # amount for each order
     spread_bps = 10                     # bot places maker orders at this spread to taker price
     min_spread_bps = 0                  # bot refreshes order if spread is lower than min-spread
@@ -31,13 +42,49 @@ class SimpleXEMM(ScriptStrategyBase):
     max_order_age = 120                 # bot refreshes orders after this age
 
     markets = {maker_exchange: {maker_pair}, taker_exchange: {taker_pair}}
+    
+
+    market_names: List[Tuple[str, List[str]]] = [
+        (maker_exchange, [maker_pair]),
+        (taker_exchange, [taker_pair]),
+    ]
+
+    self._initialize_markets(market_names)
+    maker_data = [self.markets[maker_market], maker_trading_pair] + list(maker_assets)
+    taker_data = [self.markets[taker_market], taker_trading_pair] + list(taker_assets)
+    maker_market_trading_pair_tuple = MarketTradingPairTuple(*maker_data)
+    taker_market_trading_pair_tuple = MarketTradingPairTuple(*taker_data)
+    # self.market_trading_pair_tuples = [maker_market_trading_pair_tuple, taker_market_trading_pair_tuple]
+    # self.market_pair = MakerTakerMarketPair(maker=maker_market_trading_pair_tuple, taker=taker_market_trading_pair_tuple)
+    market_trading_pair_tuples = [maker_market_trading_pair_tuple, taker_market_trading_pair_tuple]
+    market_pair = MakerTakerMarketPair(maker=maker_market_trading_pair_tuple, taker=taker_market_trading_pair_tuple)
+
 
     buy_order_placed = False
     sell_order_placed = False
 
     def on_tick(self):
+        self.logger().info("##@@## on_tick")
         taker_buy_result = self.connectors[self.taker_exchange].get_price_for_volume(self.taker_pair, True, self.order_amount)
         taker_sell_result = self.connectors[self.taker_exchange].get_price_for_volume(self.taker_pair, False, self.order_amount)
+        
+        taker_market = market_pair.taker.market
+        return
+        
+        #    if self.is_gateway_market(market_pair.taker):  # @@## !!!!!! 从ｔａｋｅｒ　获取　ｐｒｉｃｅ！！！！！
+        #         taker_price = await taker_market.get_order_price(taker_trading_pair,
+        #                                                          False,
+        #                                                          size)
+        #         if taker_price is None:
+        #             self.logger().warning("Gateway: failed to obtain order price."
+        #                                   "No market making order will be submitted.")
+        #             return s_decimal_nan
+        #     else:
+        #         try:
+        #             taker_price = taker_market.get_vwap_for_volume(taker_trading_pair, False, size).result_price
+        #         except ZeroDivisionError:
+        #             return s_decimal_nan
+
 
         if not self.buy_order_placed:
             maker_buy_price = taker_sell_result.result_price * Decimal(1 - self.spread_bps / 10000)

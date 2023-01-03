@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 GATEWAY_READY_TIMEOUT = 300  # seconds
 
 
-class StartCommand(GatewayChainApiManager):
+class StartCommand(GatewayChainApiManager): ##@@##
     _in_start_check: bool = False
 
     async def _run_clock(self):
@@ -52,6 +52,7 @@ class StartCommand(GatewayChainApiManager):
         return any([s.uses_gateway_generic_connector()
                     for s in exchange_settings])
 
+    ##@@##
     def start(self,  # type: HummingbotApplication
               log_level: Optional[str] = None,
               restore: Optional[bool] = False,
@@ -60,7 +61,7 @@ class StartCommand(GatewayChainApiManager):
         if threading.current_thread() != threading.main_thread():
             self.ev_loop.call_soon_threadsafe(self.start, log_level, restore)
             return
-        safe_ensure_future(self.start_check(log_level, restore, script, is_quickstart), loop=self.ev_loop)
+        safe_ensure_future(self.start_check(log_level, restore, script, is_quickstart), loop=self.ev_loop)//##@@## call start_check()
 
     async def start_check(self,  # type: HummingbotApplication
                           log_level: Optional[str] = None,
@@ -94,7 +95,7 @@ class StartCommand(GatewayChainApiManager):
                     self.strategy_file_name = None
                     raise
 
-        if script:
+        if script: ##@@## script
             file_name = script.split(".")[0]
             self.strategy_file_name = file_name
             self.strategy_name = file_name
@@ -116,7 +117,8 @@ class StartCommand(GatewayChainApiManager):
 
         self._initialize_notifiers()
         try:
-            self._initialize_strategy(self.strategy_name)
+            ## strategy_name　,查看是哪里传入的
+            self._initialize_strategy(self.strategy_name)  ##@@## search for 'strategy_name' py file in script/ dir
         except NotImplementedError:
             self._in_start_check = False
             self.strategy_name = None
@@ -124,12 +126,12 @@ class StartCommand(GatewayChainApiManager):
             self.notify("Invalid strategy. Start aborted.")
             raise
 
-        if any([str(exchange).endswith("paper_trade") for exchange in settings.required_exchanges]):
+        if any([str(exchange).endswith("paper_trade") for exchange in settings.required_exchanges]): ##@@##
             self.notify("\nPaper Trading Active: All orders are simulated and no real orders are placed.")
 
         for exchange in settings.required_exchanges:
             connector: str = str(exchange)
-            status: str = get_connector_status(connector)
+            status: str = get_connector_status(connector) ##@@##
             warning_msg: Optional[str] = warning_messages.get(connector, None)
 
             # confirm gateway connection
@@ -183,8 +185,8 @@ class StartCommand(GatewayChainApiManager):
                 self.notify(f"\nConnector status: {status}. This connector has one or more issues.\n"
                             "Refer to our Github page for more info: https://github.com/hummingbot/hummingbot")
 
-        self.notify(f"\nStatus check complete. Starting '{self.strategy_name}' strategy...")
-        await self.start_market_making(restore)
+        self.notify(f"\nStatus check complete. Starting '{self.strategy_name}' strategy...") ##@@##
+        await self.start_market_making(restore) ##@@##
 
         self._in_start_check = False
 
@@ -203,7 +205,8 @@ class StartCommand(GatewayChainApiManager):
         script_file_name = settings.SCRIPT_STRATEGIES_PATH / f"{self.strategy_file_name}.py"
         return script_file_name.exists()
 
-    async def start_market_making(self,  # type: HummingbotApplication
+    ##@@##
+    async def start_market_making(self,  # type: HummingbotApplication 
                                   restore: Optional[bool] = False):
         try:
             self.start_time = time.time() * 1e3  # Time in milliseconds
@@ -246,9 +249,9 @@ class StartCommand(GatewayChainApiManager):
         if self.is_current_strategy_script_strategy():
             self.start_script_strategy()
         else:
-            start_strategy: Callable = get_strategy_starter_file(strategy_name)
+            start_strategy: Callable = get_strategy_starter_file(strategy_name) ##@@## ?1
             if strategy_name in settings.STRATEGIES:
-                start_strategy(self)
+                start_strategy(self) ##@@## !! call the strategy/xxx/start.py file
             else:
                 raise NotImplementedError
 

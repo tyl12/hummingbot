@@ -62,7 +62,7 @@ async def main_async(client_config_map: ClientConfigAdapter):
     start_listener: UIStartListener = UIStartListener(hb)
     hb.app.add_listener(HummingbotUIEvent.Start, start_listener)
 
-    tasks: List[Coroutine] = [hb.run(), start_existing_gateway_container(client_config_map)]
+    tasks: List[Coroutine] = [hb.run(), start_existing_gateway_container(client_config_map)] ##@@##
     if client_config_map.debug_console:
         if not hasattr(__builtins__, "help"):
             import _sitebuiltins
@@ -70,7 +70,7 @@ async def main_async(client_config_map: ClientConfigAdapter):
 
         from hummingbot.core.management.console import start_management_console
         management_port: int = detect_available_port(8211)
-        tasks.append(start_management_console(locals(), host="localhost", port=management_port))
+        tasks.append(start_management_console(locals(), host="localhost", port=management_port)) ##@@##
     await safe_gather(*tasks)
 
 
@@ -79,9 +79,9 @@ def main():
     secrets_manager_cls = ETHKeyFileSecretManger
     ev_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()
     client_config_map = load_client_config_map_from_file()
-    if login_prompt(secrets_manager_cls, style=load_style(client_config_map)):
+    if login_prompt(secrets_manager_cls, style=load_style(client_config_map)): ##@@##
         ev_loop.run_until_complete(main_async(client_config_map))
 
 
 if __name__ == "__main__":
-    fork_and_start(main)
+    fork_and_start(main) # ##@@##

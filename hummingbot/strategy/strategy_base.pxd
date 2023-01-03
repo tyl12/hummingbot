@@ -5,7 +5,7 @@ from hummingbot.core.event.event_listener cimport EventListener
 
 from .order_tracker cimport OrderTracker
 
-cdef class StrategyBase(TimeIterator):
+cdef class StrategyBase(TimeIterator): ##@@##
     cdef:
         set _sb_markets
         EventListener _sb_create_buy_order_listener

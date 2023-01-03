@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 s_logger = None
 
 
-class BinanceExchange(ExchangePyBase):
+class BinanceExchange(ExchangePyBase):  ##@@##
     UPDATE_ORDER_STATUS_MIN_INTERVAL = 10.0
 
     web_utils = web_utils

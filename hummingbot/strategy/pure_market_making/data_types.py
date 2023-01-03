@@ -44,7 +44,7 @@ class PriceSize:
     def __repr__(self):
         return f"[ p: {self.price} s: {self.size} ]"
 
-
+##@@##
 class Proposal:
     def __init__(self, buys: List[PriceSize], sells: List[PriceSize]):
         self.buys: List[PriceSize] = buys

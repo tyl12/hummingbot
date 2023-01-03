@@ -514,7 +514,7 @@ def get_strategy_config_map(
     return config_map
 
 
-def get_strategy_starter_file(strategy: str) -> Callable:
+def get_strategy_starter_file(strategy: str) -> Callable: ##@@## !! 加载执行　strategy/start.py 文件
     """
     Given the name of a strategy, find and load the `start` function in
     `hummingbot/strategy/{STRATEGY_NAME}/start.py` file.
@@ -598,7 +598,7 @@ def load_connector_config_map_from_file(yml_path: Path) -> ClientConfigAdapter:
 
 
 def load_client_config_map_from_file() -> ClientConfigAdapter:
-    yml_path = CLIENT_CONFIG_PATH
+    yml_path = CLIENT_CONFIG_PATH ##@@##  CONF_DIR_PATH = root_path() / "conf" ,   CLIENT_CONFIG_PATH = CONF_DIR_PATH / "conf_client.yml"
     if yml_path.exists():
         config_data = read_yml_file(yml_path)
     else:
@@ -610,7 +610,7 @@ def load_client_config_map_from_file() -> ClientConfigAdapter:
     if len(config_validation_errors) > 0:
         all_errors = "\n".join(config_validation_errors)
         raise ConfigValidationError(f"There are errors in the client global configuration (\n{all_errors})")
-    save_to_yml(yml_path, config_map)
+    save_to_yml(yml_path, config_map) ##@@##
 
     return config_map
 

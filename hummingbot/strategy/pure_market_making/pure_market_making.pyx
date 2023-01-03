@@ -35,7 +35,7 @@ s_decimal_neg_one = Decimal(-1)
 pmm_logger = None
 
 
-cdef class PureMarketMakingStrategy(StrategyBase):
+cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
     OPTION_LOG_CREATE_ORDER = 1 << 3
     OPTION_LOG_MAKER_ORDER_FILLED = 1 << 4
     OPTION_LOG_STATUS_REPORT = 1 << 5
@@ -48,15 +48,16 @@ cdef class PureMarketMakingStrategy(StrategyBase):
             pmm_logger = logging.getLogger(__name__)
         return pmm_logger
 
+    ##@@##
     def init_params(self,
                     market_info: MarketTradingPairTuple,
                     bid_spread: Decimal,
                     ask_spread: Decimal,
                     order_amount: Decimal,
-                    order_levels: int = 1,
+                    order_levels: int = 1, ##@@## order 等级数量
                     order_level_spread: Decimal = s_decimal_zero,
                     order_level_amount: Decimal = s_decimal_zero,
-                    order_refresh_time: float = 30.0,
+                    order_refresh_time: float = 30.0,   ##@@## 刷新订单时间间隔　Every order_refresh_time seconds, the strategy replaces existing orders with new orders with refreshed spreads and order amounts.
                     max_order_age: float = 1800.0,
                     order_refresh_tolerance_pct: Decimal = s_decimal_neg_one,
                     filled_order_delay: float = 60.0,
@@ -99,7 +100,7 @@ cdef class PureMarketMakingStrategy(StrategyBase):
         self._ask_spread = ask_spread
         self._minimum_spread = minimum_spread
         self._order_amount = order_amount
-        self._order_levels = order_levels
+        self._order_levels = order_levels  ##@@##
         self._buy_levels = order_levels
         self._sell_levels = order_levels
         self._order_level_spread = order_level_spread
@@ -506,7 +507,7 @@ cdef class PureMarketMakingStrategy(StrategyBase):
 
         price = self.get_price()
         base_asset_amount, quote_asset_amount = self.c_get_adjusted_available_balance(self.active_orders)
-        total_order_size = calculate_total_order_size(self._order_amount, self._order_level_amount, self._order_levels)
+        total_order_size = calculate_total_order_size(self._order_amount, self._order_level_amount, self._order_levels) ##@@##
 
         base_asset_value = base_asset_amount * price
         quote_asset_value = quote_asset_amount / price if price > s_decimal_zero else s_decimal_zero
@@ -619,7 +620,7 @@ cdef class PureMarketMakingStrategy(StrategyBase):
 
         return pd.DataFrame(data=data, columns=columns)
 
-    def market_status_data_frame(self, market_trading_pair_tuples: List[MarketTradingPairTuple]) -> pd.DataFrame:
+    def market_status_data_frame(self, market_trading_pair_tuples: List[MarketTradingPairTuple]) -> pd.DataFrame:  ##@@##
         markets_data = []
         markets_columns = ["Exchange", "Market", "Best Bid", "Best Ask", f"Ref Price ({self._price_type.name})"]
         if self._price_type is PriceType.LastOwnTrade and self._last_own_trade_price.is_nan():
@@ -719,7 +720,9 @@ cdef class PureMarketMakingStrategy(StrategyBase):
         self._hanging_orders_tracker.unregister_events(self.active_markets)
         StrategyBase.c_stop(self, clock)
 
-    cdef c_tick(self, double timestamp):
+
+    ##@@## If you're reading or writing a strategy module, the c_tick() function should be treated as the entry point of a strategy module. If you're reading a strategy module's code, c_tick() should be where you start. If you're writing a new strategy module, c_tick() is also going to where you start writing the important bits of your strategy.
+    cdef c_tick(self, double timestamp):  ##@@## a running strategy module is called every second via its c_tick() method to check on the markets and wallets,
         StrategyBase.c_tick(self, timestamp)
 
         cdef:
@@ -747,7 +750,7 @@ cdef class PureMarketMakingStrategy(StrategyBase):
             proposal = None
             if self._create_timestamp <= self._current_timestamp:
                 # 1. Create base order proposals
-                proposal = self.c_create_base_proposal()
+                proposal = self.c_create_base_proposal() ##@@##
                 # 2. Apply functions that limit numbers of buys and sells proposal
                 self.c_apply_order_levels_modifiers(proposal)
                 # 3. Apply functions that modify orders price

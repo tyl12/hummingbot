@@ -13,10 +13,10 @@ from hummingbot.strategy.market_trading_pair_tuple import MarketTradingPairTuple
 
 def start(self):
     c_map = self.strategy_config_map
-    maker_market = c_map.maker_market.lower()
-    taker_market = c_map.taker_market.lower()
-    raw_maker_trading_pair = c_map.maker_market_trading_pair
-    raw_taker_trading_pair = c_map.taker_market_trading_pair
+    maker_market = c_map.maker_market.lower()  ## binance
+    taker_market = c_map.taker_market.lower()  ## pancakeswap_binance-smart-chain_mainnet
+    raw_maker_trading_pair = c_map.maker_market_trading_pair    ##BNB-USDT
+    raw_taker_trading_pair = c_map.taker_market_trading_pair       ##WBNB-USDT
     status_report_interval = self.client_config_map.strategy_report_interval
     debug_price_shim = c_map.debug_price_shim
 
@@ -25,6 +25,11 @@ def start(self):
         taker_trading_pair: str = raw_taker_trading_pair
         maker_assets: Tuple[str, str] = self._initialize_market_assets(maker_market, [maker_trading_pair])[0]
         taker_assets: Tuple[str, str] = self._initialize_market_assets(taker_market, [taker_trading_pair])[0]
+        """
+        def _initialize_market_assets(market_name: str, trading_pairs: List[str]) -> List[Tuple[str, str]]:
+            market_trading_pairs: List[Tuple[str, str]] = [(trading_pair.split('-')) for trading_pair in trading_pairs]
+            return market_trading_pairs
+        """
     except ValueError as e:
         self.notify(str(e))
         return

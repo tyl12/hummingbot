@@ -236,6 +236,8 @@ class GatewayEVMAMM(ConnectorBase):
             return match.group(2)
         return None
 
+    ##@@##
+    
     @staticmethod
     def create_market_order_id(side: TradeType, trading_pair: str) -> str:
         return f"{side.name.lower()}-{trading_pair}-{get_tracking_nonce()}"
@@ -313,7 +315,7 @@ class GatewayEVMAMM(ConnectorBase):
                                   trading_pair=token_symbol,
                                   is_approval=True)
         try:
-            resp: Dict[str, Any] = await self._get_gateway_instance().approve_token(
+            resp: Dict[str, Any] = await self._get_gateway_instance().approve_token(  ##@@##
                 self.chain,
                 self.network,
                 self.address,
@@ -486,6 +488,8 @@ class GatewayEVMAMM(ConnectorBase):
         """
         return await self.get_quote_price(trading_pair, is_buy, amount, ignore_shim=ignore_shim)
 
+
+    ##@@## !!
     def buy(self, trading_pair: str, amount: Decimal, order_type: OrderType, price: Decimal, **kwargs) -> str:
         """
         Buys an amount of base token for a given price (or cheaper).
@@ -518,8 +522,8 @@ class GatewayEVMAMM(ConnectorBase):
         :return: A newly created order id (internal).
         """
         side: TradeType = TradeType.BUY if is_buy else TradeType.SELL
-        order_id: str = self.create_market_order_id(side, trading_pair)
-        safe_ensure_future(self._create_order(side, order_id, trading_pair, amount, price, **request_args))
+        order_id: str = self.create_market_order_id(side, trading_pair)  ##@@## 生成ｏｒｄｅｒｉｄ
+        safe_ensure_future(self._create_order(side, order_id, trading_pair, amount, price, **request_args)) ##@@## 提交ｏｒｄｅｒ
         return order_id
 
     async def _create_order(
@@ -543,13 +547,13 @@ class GatewayEVMAMM(ConnectorBase):
         amount = self.quantize_order_amount(trading_pair, amount)
         price = self.quantize_order_price(trading_pair, price)
         base, quote = trading_pair.split("-")
-        self.start_tracking_order(order_id=order_id,
+        self.start_tracking_order(order_id=order_id,  ##@@## 开始检测ｏｒｄｅｒ
                                   trading_pair=trading_pair,
                                   trade_type=trade_type,
                                   price=price,
                                   amount=amount)
         try:
-            order_result: Dict[str, Any] = await self._get_gateway_instance().amm_trade(
+            order_result: Dict[str, Any] = await self._get_gateway_instance().amm_trade( ##@@## dex上链
                 self.chain,
                 self.network,
                 self.connector_name,
@@ -603,6 +607,7 @@ class GatewayEVMAMM(ConnectorBase):
             )
             self._order_tracker.process_order_update(order_update)
 
+    ##@@##
     def start_tracking_order(self,
                              order_id: str,
                              exchange_order_id: Optional[str] = None,
@@ -1079,6 +1084,7 @@ class GatewayEVMAMM(ConnectorBase):
         skipped_cancellations: List[CancellationResult] = [CancellationResult(oid, False) for oid in canceling_id_set]
         return sent_cancellations + skipped_cancellations
 
+    ##@@##
     def _get_gateway_instance(self) -> GatewayHttpClient:
         gateway_instance = GatewayHttpClient.get_instance(self._client_config)
         return gateway_instance

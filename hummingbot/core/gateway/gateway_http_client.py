@@ -59,7 +59,7 @@ class GatewayHttpClient:
         if client_config_map is None:
             from hummingbot.client.hummingbot_application import HummingbotApplication
             client_config_map = HummingbotApplication.main_application().client_config_map
-        api_host = client_config_map.gateway.gateway_api_host
+        api_host = client_config_map.gateway.gateway_api_host  ##@@##
         api_port = client_config_map.gateway.gateway_api_port
         if GatewayHttpClient.__instance is None:
             self._base_url = f"https://{api_host}:{api_port}"
@@ -435,6 +435,8 @@ class GatewayHttpClient:
             "nonce": nonce
         })
 
+
+    ##@@## dex上鏈操作
     async def amm_trade(
             self,
             chain: str,
@@ -469,7 +471,7 @@ class GatewayHttpClient:
             request_payload["maxFeePerGas"] = str(max_fee_per_gas)
         if max_priority_fee_per_gas is not None:
             request_payload["maxPriorityFeePerGas"] = str(max_priority_fee_per_gas)
-        return await self.api_request("post", "amm/trade", request_payload)
+        return await self.api_request("post", "amm/trade", request_payload) ##@@## http post to dex gateway docker
 
     async def amm_estimate_gas(
             self,

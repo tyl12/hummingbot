@@ -39,6 +39,7 @@ cdef class StrategyPyBase(StrategyBase):
     def stop(self, clock: Clock):
         pass
 
+    ##@@##
     cdef c_tick(self, double timestamp):
         StrategyBase.c_tick(self, timestamp)
         self.tick(timestamp)
