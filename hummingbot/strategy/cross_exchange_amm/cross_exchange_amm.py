@@ -26,7 +26,7 @@ from hummingbot.core.event.events import (
 )
 from hummingbot.core.network_iterator import NetworkStatus
 from hummingbot.core.utils.async_utils import safe_ensure_future
-from hummingbot.strategy.cross_exchange_market_making.cross_exchange_market_making_config_map_pydantic import (
+from hummingbot.strategy.cross_exchange_amm.cross_exchange_amm_config_map_pydantic import (
     CrossExchangeAMMConfigMap,
     PassiveOrderRefreshMode,
 )

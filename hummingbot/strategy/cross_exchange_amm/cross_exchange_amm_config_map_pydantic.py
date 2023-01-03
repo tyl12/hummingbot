@@ -35,7 +35,7 @@ class OracleConversionRateMode(ConversionRateModel):
         :return: A tuple of quote pair symbol, quote conversion rate source, quote conversion rate,
         base pair symbol, base conversion rate source, base conversion rate
         """
-        from .cross_exchange_market_making import CrossExchangeMarketMakingStrategy
+        from .cross_exchange_amm import CrossExchangeAMMStrategy
         quote_pair = f"{market_pair.taker.quote_asset}-{market_pair.maker.quote_asset}"
         if market_pair.taker.quote_asset != market_pair.maker.quote_asset:
             quote_rate_source = RateOracle.get_instance().source.name
@@ -53,7 +53,7 @@ class OracleConversionRateMode(ConversionRateModel):
             base_rate = Decimal("1")
 
         gas_pair = None
-        if CrossExchangeMarketMakingStrategy.is_gateway_market(market_pair.taker):
+        if CrossExchangeAMMStrategy.is_gateway_market(market_pair.taker):
             if hasattr(market_pair.taker.market, "network_transaction_fee"):
                 transaction_fee: TokenAmount = market_pair.taker.market.network_transaction_fee
                 if transaction_fee is not None:
@@ -122,7 +122,7 @@ class TakerToMakerConversionRateMode(ConversionRateModel):
         :return: A tuple of quote pair symbol, quote conversion rate source, quote conversion rate,
         base pair symbol, base conversion rate source, base conversion rate
         """
-        from .cross_exchange_market_making import CrossExchangeMarketMakingStrategy
+        from .cross_exchange_amm import CrossExchangeAMMStrategy
         quote_pair = f"{market_pair.taker.quote_asset}-{market_pair.maker.quote_asset}"
         quote_rate_source = "fixed"
         quote_rate = self.taker_to_maker_quote_conversion_rate
@@ -132,7 +132,7 @@ class TakerToMakerConversionRateMode(ConversionRateModel):
         base_rate = self.taker_to_maker_base_conversion_rate
 
         gas_pair = None
-        if CrossExchangeMarketMakingStrategy.is_gateway_market(market_pair.taker):
+        if CrossExchangeAMMStrategy.is_gateway_market(market_pair.taker):
             if hasattr(market_pair.taker.market, "network_transaction_fee"):
                 transaction_fee: TokenAmount = market_pair.taker.market.network_transaction_fee
                 if transaction_fee is not None:
@@ -226,8 +226,8 @@ ORDER_REFRESH_MODELS = {
 }
 
 
-class CrossExchangeMarketMakingConfigMap(BaseTradingStrategyMakerTakerConfigMap):
-    strategy: str = Field(default="cross_exchange_market_making", client_data=None)
+class CrossExchangeAMMConfigMap(BaseTradingStrategyMakerTakerConfigMap):
+    strategy: str = Field(default="cross_exchange_amm", client_data=None)
 
     min_profitability: Decimal = Field(
         default=...,
@@ -244,7 +244,7 @@ class CrossExchangeMarketMakingConfigMap(BaseTradingStrategyMakerTakerConfigMap)
         description="The strategy order amount.",
         ge=0.0,
         client_data=ClientFieldData(
-            prompt=lambda mi: CrossExchangeMarketMakingConfigMap.order_amount_prompt(mi),
+            prompt=lambda mi: CrossExchangeAMMConfigMap.order_amount_prompt(mi),
             prompt_on_new=True,
         )
     )
@@ -268,7 +268,7 @@ class CrossExchangeMarketMakingConfigMap(BaseTradingStrategyMakerTakerConfigMap)
         description="Volume requirement for determining a possible top bid or ask price from the order book.",
         ge=0.0,
         client_data=ClientFieldData(
-            prompt=lambda mi: CrossExchangeMarketMakingConfigMap.top_depth_tolerance_prompt(mi),
+            prompt=lambda mi: CrossExchangeAMMConfigMap.top_depth_tolerance_prompt(mi),
         ),
     )
     anti_hysteresis_duration: float = Field(
@@ -378,13 +378,13 @@ class CrossExchangeMarketMakingConfigMap(BaseTradingStrategyMakerTakerConfigMap)
     # === prompts ===
 
     @classmethod
-    def top_depth_tolerance_prompt(cls, model_instance: 'CrossExchangeMarketMakingConfigMap') -> str:
+    def top_depth_tolerance_prompt(cls, model_instance: 'CrossExchangeAMMConfigMap') -> str:
         maker_market = model_instance.maker_market_trading_pair
         base_asset, quote_asset = maker_market.split("-")
         return f"What is your top depth tolerance? (in {base_asset})"
 
     @classmethod
-    def order_amount_prompt(cls, model_instance: 'CrossExchangeMarketMakingConfigMap') -> str:
+    def order_amount_prompt(cls, model_instance: 'CrossExchangeAMMConfigMap') -> str:
         trading_pair = model_instance.maker_market_trading_pair
         base_asset, quote_asset = trading_pair.split("-")
         return f"What is the amount of {base_asset} per order?"
