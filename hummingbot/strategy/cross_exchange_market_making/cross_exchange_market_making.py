@@ -416,7 +416,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         if self._gateway_quotes_task is None or self._gateway_quotes_task.done():
             self._gateway_quotes_task = safe_ensure_future(self.get_gateway_quotes())
 
-        if self.ready_for_new_trades():
+        if self.ready_for_new_trades(): ## 对冲完成
             if self._main_task is None or self._main_task.done():
                 self._main_task = safe_ensure_future(self.main(timestamp)) ##@@## !!!!!
 
@@ -1041,6 +1041,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                     f"allowed on the taker market. No hedging possible yet."
                 )
 
+    ##@@## config_map.order_amount指定交易量，如果没有指定，则通过get_order_size_after_portfolio_ratio_limit（）计算出一个交易量
     def get_adjusted_limit_order_size(self, market_pair: MakerTakerMarketPair) -> Tuple[Decimal, Decimal]:
         """
         Given the proposed order size of a proposed limit order (regardless of bid or ask), adjust and refine the order
@@ -1056,11 +1057,15 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         maker_market = market_pair.maker.market
         trading_pair = market_pair.maker.trading_pair
         if self._config_map.order_amount and self._config_map.order_amount > 0:
-            base_order_size = self._config_map.order_amount
-            return maker_market.quantize_order_amount(trading_pair, Decimal(base_order_size))
+            base_order_size = self._config_map.order_amount             ##@@## 从输入参数中获取 order_amount, the amount of base_asset per order, ETH/USD为例， 指定的是ETH的最小订单量
+            self.logger().warning(f"##@@## get_adjusted_limit_order_size: base_order_size={base_order_size}")
+            self.logger().warning(f"##@@## get_adjusted_limit_order_size: base_asset={market_pair.maker.base_asset}, quote_asset={market_pair.maker.quote_asset}")
+            
+            return maker_market.quantize_order_amount(trading_pair, Decimal(base_order_size))   ##@@## 取整到交易所當前交易對的最小下單量的整數倍, touch this
         else:
-            return self.get_order_size_after_portfolio_ratio_limit(market_pair)
+            return self.get_order_size_after_portfolio_ratio_limit(market_pair) 
 
+    ## 折算到config_map中指定的单次交易量的上限
     def get_order_size_after_portfolio_ratio_limit(self, market_pair: MakerTakerMarketPair) -> Decimal:
         """
         Given the proposed order size of a proposed limit order (regardless of bid or ask), adjust the order sizing
@@ -1077,12 +1082,13 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         base_balance = maker_market.get_balance(market_pair.maker.base_asset)
         quote_balance = maker_market.get_balance(market_pair.maker.quote_asset)
         current_price = (maker_market.get_price(trading_pair, True) +
-                         maker_market.get_price(trading_pair, False)) * Decimal(0.5)
-        maker_portfolio_value = base_balance + quote_balance / current_price
-        adjusted_order_size = maker_portfolio_value * self.order_size_portfolio_ratio_limit
+                         maker_market.get_price(trading_pair, False)) * Decimal(0.5)    ## buy + sell报价 /2
+        maker_portfolio_value = base_balance + quote_balance / current_price   ## ETH balance + USD/ETH报价 => ETH 计 总量
+        adjusted_order_size = maker_portfolio_value * self.order_size_portfolio_ratio_limit ## config_map中指定的，单次交易的资产总量上限， What ratio of your total portfolio value would you like to trade on the maker and taker markets? Enter 50 for 50%
 
-        return maker_market.quantize_order_amount(trading_pair, Decimal(adjusted_order_size))
+        return maker_market.quantize_order_amount(trading_pair, Decimal(adjusted_order_size)) ## 折算到ETH的交易量
 
+    ##基于config_map.order_amount, 账户中ETH/USD各自balance计算得到的当前下单的可允许的订单量
     async def get_market_making_size(self,
                                      market_pair: MakerTakerMarketPair,
                                      is_bid: bool):
@@ -1103,30 +1109,30 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         taker_market = market_pair.taker.market
 
         # Maker order size (in base asset)
-        size = self.get_adjusted_limit_order_size(market_pair)
+        size = self.get_adjusted_limit_order_size(market_pair) ## 根据 config_map.order_amount 获取size。并且则算到交易所的最小交易单元量的整数倍； ETH/USD的话，得到的是ETH的交易量
 
         # Convert maker order size (in maker base asset) to taker order size (in taker base asset)
         _, _, quote_rate, _, _, base_rate, _, _, _ = self.get_conversion_rates(market_pair)
-        taker_size = size / base_rate
+        taker_size = size / base_rate   ##将maker上的baseasset量(ETH)，则算到taker上的baseasset量(ETH)
 
-        if is_bid:
+        if is_bid: ## maker挂买单， taker 卖
             # Maker buy
             # Taker sell
-            maker_balance_in_quote = maker_market.get_available_balance(market_pair.maker.quote_asset)
+            maker_balance_in_quote = maker_market.get_available_balance(market_pair.maker.quote_asset) ## maker上USD balance
             taker_balance = taker_market.get_available_balance(market_pair.taker.base_asset) * \
-                self.order_size_taker_balance_factor
+                self.order_size_taker_balance_factor     ##config_map中指定的，可以使用多少taker上的ETH资产百分比用于 hedge, What percentage of asset balance would you like to use for hedging trades on the taker market?
 
-            if self.is_gateway_market(market_pair.taker):
+            if self.is_gateway_market(market_pair.taker): ## DEX
                 taker_price = await taker_market.get_order_price(taker_trading_pair,
                                                                  False,
-                                                                 taker_size)
+                                                                 taker_size)  ## taker上，卖 taker_size的资产(ETH)，对应的(ETH) 报价
                 if taker_price is None:
                     self.logger().warning("Gateway: failed to obtain order price."
                                           "No market making order will be submitted.")
                     return s_decimal_zero
             else:
                 try:
-                    taker_price = taker_market.get_vwap_for_volume(
+                    taker_price = taker_market.get_vwap_for_volume(     ## CEX上，卖 taker_size ETH涉及的ETH报价
                         taker_trading_pair, False, taker_size
                     ).result_price
                 except ZeroDivisionError:
@@ -1138,20 +1144,20 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                 order_amount = Decimal("0")
             else:
                 maker_balance = maker_balance_in_quote / \
-                    (taker_price * self.markettaker_to_maker_base_conversion_rate(market_pair))
-                taker_balance *= base_rate
-                order_amount = min(maker_balance, taker_balance, size)
+                    (taker_price * self.markettaker_to_maker_base_conversion_rate(market_pair))   ##maker上USD总量/taker上ETH报价=>可买的eth总量
+                taker_balance *= base_rate  ## taker上可用于对冲的ETH总量
+                order_amount = min(maker_balance, taker_balance, size) ## maker上ETH可用量， taker上。。。， config_map中指定的order_amount折算量  
 
-            return maker_market.quantize_order_amount(market_pair.maker.trading_pair, Decimal(order_amount))
+            return maker_market.quantize_order_amount(market_pair.maker.trading_pair, Decimal(order_amount)) ##再次折算到exchange的交易单位整数倍
 
         else:
             # Maker sell
             # Taker buy
-            maker_balance = maker_market.get_available_balance(market_pair.maker.base_asset)
+            maker_balance = maker_market.get_available_balance(market_pair.maker.base_asset) ## maker 上ETH balance
             taker_balance_in_quote = taker_market.get_available_balance(market_pair.taker.quote_asset) * \
-                self.order_size_taker_balance_factor
+                self.order_size_taker_balance_factor ## taker上USD资产的百分比，可以用于对冲
 
-            if self.is_gateway_market(market_pair.taker):
+            if self.is_gateway_market(market_pair.taker): ## DEX 上 买 size 量 ETH 对应的 taker报价
                 taker_price = await taker_market.get_order_price(taker_trading_pair,
                                                                  True,
                                                                  size)
@@ -1174,7 +1180,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
             else:
                 taker_slippage_adjustment_factor = Decimal("1") + self.slippage_buffer
                 taker_balance = taker_balance_in_quote / (taker_price * taker_slippage_adjustment_factor)
-                taker_balance *= base_rate
+                taker_balance *= base_rate  ## 计入哗点情况下，taker上能够买的ETh的量
                 order_amount = min(maker_balance, taker_balance, size)
 
             return maker_market.quantize_order_amount(market_pair.maker.trading_pair, Decimal(order_amount))
@@ -1641,6 +1647,8 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         #     base_rate = RateOracle.get_instance().rate(base_pair)
         #     return quote_rate / base_rate
 
+
+    ##@@## 计算maker上的bid,ask下单size,及相应的报价， 往maker market上下单
     async def check_and_create_new_orders(self,
                                           market_pair: MarketTradingPairTuple,
                                           has_active_bid: bool,
@@ -1657,18 +1665,18 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
 
         # if there is no active bid, place bid again
         if not has_active_bid:
-            bid_size = await self.get_market_making_size(market_pair, True)
+            bid_size = await self.get_market_making_size(market_pair, True) ##基于config_map.order_amount,结合 账户中ETH/USD各自balance; 计算得到的当前下单的可允许的订单量
 
             if bid_size > s_decimal_zero:
-                bid_price = await self.get_market_making_price(market_pair, True, bid_size)  ##@@##
+                bid_price = await self.get_market_making_price(market_pair, True, bid_size)  ##@@## 获取maker上bid_size对应的 买单报价
                 if not Decimal.is_nan(bid_price):
-                    effective_hedging_price = await self.calculate_effective_hedging_price(
+                    effective_hedging_price = await self.calculate_effective_hedging_price( ## 计算taker上 bid_size对应的 对冲报价
                         market_pair,
                         True,
                         bid_size
                     )
                     effective_hedging_price_adjusted = effective_hedging_price / \
-                        self.markettaker_to_maker_base_conversion_rate(market_pair)
+                        self.markettaker_to_maker_base_conversion_rate(market_pair) #调整对冲报价
                     if LogOption.CREATE_ORDER in self.logging_options:
                         self.log_with_clock(
                             logging.INFO,
@@ -1678,7 +1686,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                             f"Current hedging price: {effective_hedging_price:.8f} {market_pair.maker.quote_asset} "
                             f"(Rate adjusted: {effective_hedging_price_adjusted:.8f} {market_pair.taker.quote_asset})."
                         )
-                    self.place_order(market_pair, True, True, bid_size, bid_price)
+                    self.place_order(market_pair, True, True, bid_size, bid_price) #maker上提交买单 ！！
                 else:
                     if LogOption.NULL_ORDER_SIZE in self.logging_options:
                         self.log_with_clock(
@@ -1717,7 +1725,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                             f"Current hedging price: {effective_hedging_price:.8f} {market_pair.maker.quote_asset} "
                             f"(Rate adjusted: {effective_hedging_price_adjusted:.8f} {market_pair.taker.quote_asset})."
                         )
-                    self.place_order(market_pair, False, True, ask_size, ask_price)
+                    self.place_order(market_pair, False, True, ask_size, ask_price) #maker上提交卖单
                 else:
                     if LogOption.NULL_ORDER_SIZE in self.logging_options:
                         self.log_with_clock(
@@ -1740,22 +1748,22 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                     is_maker: bool,  # True for maker order, False for taker order
                     amount: Decimal,
                     price: Decimal,
-                    maker_order_id: str = None,
+                    maker_order_id: str = None, ##@@## 对冲单会传入对应的 原始 maker_order_id
                     maker_exchange_trade_id: str = None):
         expiration_seconds = s_float_nan
-        market_info = market_pair.maker if is_maker else market_pair.taker
+        market_info = market_pair.maker if is_maker else market_pair.taker  ## 确定 maker / taker market 上交易
         # Market orders are not being submitted as taker orders, limit orders are preferred at all times
         order_type = market_info.market.get_maker_order_type() if is_maker else \
             OrderType.LIMIT
         if order_type is OrderType.MARKET:
             price = s_decimal_nan
-        expiration_seconds = self._config_map.order_refresh_mode.get_expiration_seconds()
+        expiration_seconds = self._config_map.order_refresh_mode.get_expiration_seconds()  ##@@## ??? 配置流程
         order_id = None
         if is_buy:
             try:
                 order_id = self.buy_with_specific_market(market_info, amount,
                                                          order_type=order_type, price=price,
-                                                         expiration_seconds=expiration_seconds)
+                                                         expiration_seconds=expiration_seconds) ##@@## 调用基类函数进行下单操作，同时，基类内部会进行order tracker; 下单返回 order_id
             except ValueError as e:
                 self.logger().warning(f"Placing an order on market {str(market_info.market.name)} "
                                       f"failed with the following error: {str(e)}")
@@ -1771,11 +1779,11 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
             return
         self._sb_order_tracker.add_create_order_pending(order_id)
         self._market_pair_tracker.start_tracking_order_id(order_id, market_info.market, market_pair)
-        if is_maker:
+        if is_maker:  ##@@## 如果是maker， 则初始化 _maker_to_taker_order_ids 
             self._maker_to_taker_order_ids[order_id] = []
         else:
-            self._taker_to_maker_order_ids[order_id] = maker_order_id
-            self._maker_to_taker_order_ids[maker_order_id] += [order_id]
+            self._taker_to_maker_order_ids[order_id] = maker_order_id ## 记录：当前taker单，对冲的原始maker单
+            self._maker_to_taker_order_ids[maker_order_id] += [order_id]  ##@@## 如果是taker, 则将当前taker orderid记录在对应maker_order_id key上； 原始maker单，对应的对冲 taker单列表
             self._ongoing_hedging[maker_exchange_trade_id] = order_id
         return order_id
 

@@ -402,9 +402,9 @@ cdef class ConnectorBase(NetworkIterator):
         """
         return self.c_quantize_order_price(trading_pair, price)
 
-    cdef object c_quantize_order_amount(self, str trading_pair, object amount, object price=s_decimal_NaN):
+    cdef object c_quantize_order_amount(self, str trading_pair, object amount, object price=s_decimal_NaN):  ##@@##
         order_size_quantum = self.c_get_order_size_quantum(trading_pair, amount)
-        return (amount // order_size_quantum) * order_size_quantum
+        return (amount // order_size_quantum) * order_size_quantum   ## 向下取整
 
     def quantize_order_amount(self, trading_pair: str, amount: Decimal) -> Decimal:
         """
