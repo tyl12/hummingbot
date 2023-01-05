@@ -38,9 +38,9 @@ cdef class OrderTracker(TimeIterator):
         self._in_flight_cancels = OrderedDict()
 
     @property
-    def active_limit_orders(self) -> List[Tuple[ConnectorBase, LimitOrder]]:
+    def active_limit_orders(self) -> List[Tuple[ConnectorBase, LimitOrder]]:  ##@@##
         limit_orders = []
-        for market_pair, orders_map in self._tracked_limit_orders.items():
+        for market_pair, orders_map in self._tracked_limit_orders.items():  ##@@##
             for limit_order in orders_map.values():
                 if self.c_has_in_flight_cancel(limit_order.client_order_id):
                     continue
@@ -215,7 +215,7 @@ cdef class OrderTracker(TimeIterator):
     cdef c_start_tracking_limit_order(self, object market_pair, str order_id, bint is_buy, object price,
                                       object quantity):
         if market_pair not in self._tracked_limit_orders:
-            self._tracked_limit_orders[market_pair] = {}
+            self._tracked_limit_orders[market_pair] = {}  ##@@## 
         if market_pair not in self._shadow_tracked_limit_orders:
             self._shadow_tracked_limit_orders[market_pair] = {}
 
@@ -228,7 +228,7 @@ cdef class OrderTracker(TimeIterator):
                                                 price,
                                                 quantity,
                                                 creation_timestamp=int(self._current_timestamp * 1e6))
-        self._tracked_limit_orders[market_pair][order_id] = limit_order
+        self._tracked_limit_orders[market_pair][order_id] = limit_order                                     ##@@##  c_start_tracking_limit_order 时会记录下当前order的信息 到 _tracked_limit_orders
         self._shadow_tracked_limit_orders[market_pair][order_id] = limit_order
         self._order_id_to_market_pair[order_id] = market_pair
         self._shadow_order_id_to_market_pair[order_id] = market_pair

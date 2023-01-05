@@ -443,6 +443,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
 
             # Process each market pair independently.
             for market_pair in self._market_pairs.values():  ##@@##
+                print("##@@## call process_market_pair: ", market_pair)
                 await self.process_market_pair(timestamp, market_pair, market_pair_to_active_orders[market_pair])  ##@@##　!!!!!
 
             # log conversion rates every 5 minutes
@@ -579,24 +580,24 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         await self.check_and_create_new_orders(market_pair, has_active_bid, has_active_ask) ##@@## !!!!!
 
 
-    ##@@## !!
+    ##@@## !! 任意maker单(部分）fill之后，调用以下函数进行taker端的对冲 ;  更新 _order_fill_buy_events，  _order_fill_sell_events 记录信息，然后调用check_and_hedge_orders 进行对冲
     async def hedge_filled_maker_order(self, order_filled_event):
         """
         If a limit order previously made to the maker side has been filled, hedge it on the taker side.
         :param order_filled_event: event object
         """
         order_id = order_filled_event.order_id
-        market_pair = self._market_pair_tracker.get_market_pair_from_order_id(order_id)
+        market_pair = self._market_pair_tracker.get_market_pair_from_order_id(order_id) ##c_start_tracking_order_id()中会记录 order_id对应的 market_pair
 
         # Make sure to only hedge limit orders.
-        if market_pair is not None and order_id not in self._taker_to_maker_order_ids.keys():
-            limit_order_record = self._sb_order_tracker.get_shadow_limit_order(order_id)
+        if market_pair is not None and order_id not in self._taker_to_maker_order_ids.keys(): ## 当前filled的 为 maker上的limit order ; _taker_to_maker_order_ids 记录了所有taker侧挂单的id
+            limit_order_record = self._sb_order_tracker.get_shadow_limit_order(order_id)  ##@@## shadow limit order
             order_fill_record = (limit_order_record, order_filled_event)
 
             # Store the limit order fill event in a map, s.t. it can be processed in check_and_hedge_orders()
             # later.
             if order_filled_event.trade_type is TradeType.BUY:
-                if market_pair not in self._order_fill_buy_events:
+                if market_pair not in self._order_fill_buy_events:  ## _order_fill_buy_events 记录了 maker上所有买单 market_pair => 对应的所有 order_filled_event事件 , orderid
                     self._order_fill_buy_events[market_pair] = [order_fill_record]
                 else:
                     self._order_fill_buy_events[market_pair].append(order_fill_record)
@@ -609,7 +610,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                     )
 
             else:
-                if market_pair not in self._order_fill_sell_events:
+                if market_pair not in self._order_fill_sell_events:  ## 所有maker上的卖单事件
                     self._order_fill_sell_events[market_pair] = [order_fill_record]
                 else:
                     self._order_fill_sell_events[market_pair].append(order_fill_record)
@@ -623,7 +624,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
 
             # Call check_and_hedge_orders() to emit the orders on the taker side.
             try:
-                await self.check_and_hedge_orders(market_pair)
+                await self.check_and_hedge_orders(market_pair)  ##@@## ！！！！！
             except Exception:
                 self.log_with_clock(logging.ERROR, "Unexpected error.", exc_info=True)
 
@@ -647,25 +648,37 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         # Remove the cancelled, failed or expired taker order
         del self._taker_to_maker_order_ids[order_event.order_id]
 
-    ##@@## !!
+
+    # “”“
+    #     # Holds active maker orders, all its taker orders ever created
+    #     self._maker_to_taker_order_ids = {}
+    #     # Holds active taker orders, and their respective maker orders
+    #     self._taker_to_maker_order_ids = {}
+    #     # Holds hedging trade ids for respective maker orders
+    #     self._maker_to_hedging_trades = {}
+    # ”“”
+    
+    ##@@## !!  An order has been filled in the market. Argument is a OrderFilledEvent object.;  #https://docs.hummingbot.org/developers/strategies/architecture/#strategybase-class
     def did_fill_order(self, order_filled_event: OrderFilledEvent):
         order_id = order_filled_event.order_id
         exchange_trade_id = order_filled_event.exchange_trade_id
-        if order_id in self._maker_to_taker_order_ids.keys():
+        if order_id in self._maker_to_taker_order_ids.keys():  ## _maker_to_taker_order_ids[] 记录 maker_order_id => [taker_order_id]，即原始maker单对应的对冲taker单id列表
+            # 当前fill的是 maker单
+            
             # Maker order filled
             # Check if this fill was already processed or not
             if order_id not in self._maker_to_hedging_trades.keys():
-                self._maker_to_hedging_trades[order_id] = []
+                self._maker_to_hedging_trades[order_id] = [] ## 记录了 fill 的 maker单 => 对应的 exchange_trade_id, 一个maker单可能对应多个 exchange_trade_id 即多次的maker上的fill事件
             if exchange_trade_id not in self._maker_to_hedging_trades[order_id]:
                 # This maker fill has not been processed yet, submit Taker hedge order
                 # Values have to be unique in a bidict
-                self._ongoing_hedging[order_filled_event.exchange_trade_id] = order_filled_event.exchange_trade_id
+                self._ongoing_hedging[order_filled_event.exchange_trade_id] = order_filled_event.exchange_trade_id  # _ongoing_hedging 记录了当前已经提交的对冲请求，以 exchange_trade_id 为key 
 
                 self._maker_to_hedging_trades[order_id] += [exchange_trade_id]
 
                 self.hedge_tasks_cleanup()
                 self._hedge_maker_order_task = safe_ensure_future(
-                    self.hedge_filled_maker_order(order_filled_event) ##@@##
+                    self.hedge_filled_maker_order(order_filled_event) ##@@## !!!!! taker侧 对冲
                 )
 
     def did_cancel_order(self, order_canceled_event: OrderCancelledEvent):
@@ -852,6 +865,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
 
         return True
 
+    ##@@## ！！！！！
     async def check_and_hedge_orders(self, market_pair: MakerTakerMarketPair):
         """
         Look into the stored and un-hedged limit order fill events, and emit orders to hedge them, depending on
@@ -860,17 +874,17 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         :param market_pair: cross exchange market pair
         """
         taker_trading_pair = market_pair.taker.trading_pair
-        buy_fill_records = self._order_fill_buy_events.get(market_pair, [])
+        buy_fill_records = self._order_fill_buy_events.get(market_pair, [])  ## maker上 filled 的买单事件
         sell_fill_records = self._order_fill_sell_events.get(market_pair, [])
 
         buy_fill_records = [fill_event for fill_event in buy_fill_records
                             if (fill_event[1].exchange_trade_id not in self._ongoing_hedging.keys() or
-                                self._ongoing_hedging[fill_event[1].exchange_trade_id] is fill_event[1].exchange_trade_id)]
+                                self._ongoing_hedging[fill_event[1].exchange_trade_id] is fill_event[1].exchange_trade_id)]  ## 过滤掉当前 market_pair 已经对冲过的单子, 剩下
         sell_fill_records = [fill_event for fill_event in sell_fill_records
                              if (fill_event[1].exchange_trade_id not in self._ongoing_hedging.keys() or
                                  self._ongoing_hedging[fill_event[1].exchange_trade_id] is fill_event[1].exchange_trade_id)]
 
-        buy_fill_quantity = sum([fill_event.amount for _, fill_event in buy_fill_records])
+        buy_fill_quantity = sum([fill_event.amount for _, fill_event in buy_fill_records]) ## maker上所有fill的但是还未对冲的 买单 的总量， 即 需要对冲的买单 量， 相当于在taker上需要 对冲的卖单量， （卖ETH的量）
         sell_fill_quantity = sum([fill_event.amount for _, fill_event in sell_fill_records])
 
         global s_decimal_zero
@@ -880,33 +894,33 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         # Convert maker order size (in maker base asset) to taker order size (in taker base asset)
         _, _, quote_rate, _, _, base_rate, _, _, _ = self.get_conversion_rates(market_pair)
 
-        if buy_fill_quantity > 0:
+        if buy_fill_quantity > 0: ## 对冲 maker上的买单， taker上做卖单 对冲
             # Maker buy
             # Taker sell
             taker_slippage_adjustment_factor = Decimal("1") - self.slippage_buffer
 
-            hedged_order_quantity = min(
+            hedged_order_quantity = min(        ## taker 上需要卖ETH的量
                 buy_fill_quantity / base_rate,
                 taker_market.get_available_balance(market_pair.taker.base_asset) *
                 self.order_size_taker_balance_factor
             )
-            quantized_hedge_amount = taker_market.quantize_order_amount(taker_trading_pair, Decimal(hedged_order_quantity))
+            quantized_hedge_amount = taker_market.quantize_order_amount(taker_trading_pair, Decimal(hedged_order_quantity)) #量化到taker market的下单整数倍
 
             avg_fill_price = (sum([r.price * r.amount for _, r in buy_fill_records]) /
-                              sum([r.amount for _, r in buy_fill_records]))
+                              sum([r.amount for _, r in buy_fill_records]))  ## maker上fill的 买单 的价格 * 数量  / 买入的总量 ， 相当于 maker上 ETh 买入的均价
 
             maker_order_ids = [r.order_id for _, r in buy_fill_records]
             maker_exchange_trade_ids = [r.exchange_trade_id for _, r in buy_fill_records]
 
-            if len(maker_order_ids) != 1 or len(maker_exchange_trade_ids) != 1:
+            if len(maker_order_ids) != 1 or len(maker_exchange_trade_ids) != 1:  ##@@## ？？？ 为何限制 1
                 self.logger().error("Multiple buy maker orders fills")
                 return
 
             maker_order_id = maker_order_ids[0]
             maker_exchange_trade_id = maker_exchange_trade_ids[0]
 
-            if self.is_gateway_market(market_pair.taker):
-                order_price = await market_pair.taker.market.get_order_price(
+            if self.is_gateway_market(market_pair.taker):  # taker是 DEX
+                order_price = await market_pair.taker.market.get_order_price( # taker报价
                     taker_trading_pair,
                     False,
                     quantized_hedge_amount)
@@ -921,12 +935,12 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                 ).result_price
 
             self.log_with_clock(logging.INFO, f"Calculated by HB order_price: {order_price}")
-            order_price *= taker_slippage_adjustment_factor
-            order_price = taker_market.quantize_order_price(taker_trading_pair, order_price)
+            order_price *= taker_slippage_adjustment_factor # taker 侧 滑点调整
+            order_price = taker_market.quantize_order_price(taker_trading_pair, order_price) # 重新量化 报价, 按照报价单位向下取整
             self.log_with_clock(logging.INFO, f"Slippage buffer adjusted order_price: {order_price}")
 
             if quantized_hedge_amount > s_decimal_zero:
-                self.place_order(
+                self.place_order(  ##@@## ！！！！！ taker 上， 卖 ETH
                     market_pair,
                     False,
                     False,
@@ -1185,7 +1199,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
 
             return maker_market.quantize_order_amount(market_pair.maker.trading_pair, Decimal(order_amount))
 
-    ##@@## !!!!!
+    ##@@## !!!!! 计算在maker上挂单应该使用的报价
     async def get_market_making_price(self,
                                       market_pair: MarketTradingPairTuple,
                                       is_bid: bool,
@@ -1246,7 +1260,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
             taker_price *= self.markettaker_to_maker_base_conversion_rate(market_pair)
 
             # you are buying on the maker market and selling on the taker market
-            maker_price = taker_price / (1 + self.min_profitability)  ##@@## !!!!!
+            maker_price = taker_price / (1 + self.min_profitability)  ##@@## !!!!! 按照 profit 调整 taker上获取的报价， 用作 maker 报价
 
             # # If your bid is higher than highest bid price, reduce it to one tick above the top bid price
             if self.adjust_order_enabled:
@@ -1686,7 +1700,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                             f"Current hedging price: {effective_hedging_price:.8f} {market_pair.maker.quote_asset} "
                             f"(Rate adjusted: {effective_hedging_price_adjusted:.8f} {market_pair.taker.quote_asset})."
                         )
-                    self.place_order(market_pair, True, True, bid_size, bid_price) #maker上提交买单 ！！
+                    self.place_order(market_pair, True, True, bid_size, bid_price) ##@@## !!!!!  maker上提交买单 ！！
                 else:
                     if LogOption.NULL_ORDER_SIZE in self.logging_options:
                         self.log_with_clock(
@@ -1781,7 +1795,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         self._market_pair_tracker.start_tracking_order_id(order_id, market_info.market, market_pair)
         if is_maker:  ##@@## 如果是maker， 则初始化 _maker_to_taker_order_ids 
             self._maker_to_taker_order_ids[order_id] = []
-        else:
+        else:   ## 对冲的 taker 单
             self._taker_to_maker_order_ids[order_id] = maker_order_id ## 记录：当前taker单，对冲的原始maker单
             self._maker_to_taker_order_ids[maker_order_id] += [order_id]  ##@@## 如果是taker, 则将当前taker orderid记录在对应maker_order_id key上； 原始maker单，对应的对冲 taker单列表
             self._ongoing_hedging[maker_exchange_trade_id] = order_id
