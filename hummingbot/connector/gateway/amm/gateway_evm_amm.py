@@ -462,7 +462,7 @@ class GatewayEVMAMM(ConnectorBase):
 
         # Pull the price from gateway.
         try:
-            resp: Dict[str, Any] = await self._get_gateway_instance().get_price(
+            resp: Dict[str, Any] = await self._get_gateway_instance().get_price(                     ##@@##
                 self.chain, self.network, self.connector_name, base, quote, amount, side
             )
             return self.parse_price_response(base, quote, amount, side, price_response=resp)
@@ -475,7 +475,7 @@ class GatewayEVMAMM(ConnectorBase):
                 app_warning_msg=str(e)
             )
 
-    async def get_order_price(
+    async def get_order_price(  ##@@## !!!!! 
             self,
             trading_pair: str,
             is_buy: bool,

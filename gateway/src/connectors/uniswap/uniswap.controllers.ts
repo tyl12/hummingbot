@@ -87,7 +87,7 @@ export async function txWriteData(
   return { wallet, maxFeePerGasBigNumber, maxPriorityFeePerGasBigNumber };
 }
 
-export async function getTradeInfo(
+export async function getTradeInfo(     //##@@##
   ethereumish: Ethereumish,
   uniswapish: Uniswapish,
   baseAsset: string,
@@ -143,7 +143,7 @@ export async function price(
   const startTimestamp: number = Date.now();
   let tradeInfo: TradeInfo;
   try {
-    tradeInfo = await getTradeInfo(
+    tradeInfo = await getTradeInfo(  //##@@###
       ethereumish,
       uniswapish,
       req.base,

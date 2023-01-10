@@ -33,7 +33,7 @@ class StartCommand(GatewayChainApiManager): ##@@##
 
     async def _run_clock(self):
         with self.clock as clock:
-            await clock.run()
+            await clock.run()               ##@@## call clock::run() => strategy::c_tick()
 
     async def wait_till_ready(self,  # type: HummingbotApplication
                               func: Callable, *args, **kwargs):
@@ -212,7 +212,7 @@ class StartCommand(GatewayChainApiManager): ##@@##
             self.start_time = time.time() * 1e3  # Time in milliseconds
             tick_size = self.client_config_map.tick_size
             self.logger().info(f"Creating the clock with tick size: {tick_size}")
-            self.clock = Clock(ClockMode.REALTIME, tick_size=tick_size)
+            self.clock = Clock(ClockMode.REALTIME, tick_size=tick_size)                     ##@@## run() => c_tick()
             for market in self.markets.values():
                 if market is not None:
                     self.clock.add_iterator(market)
@@ -224,7 +224,7 @@ class StartCommand(GatewayChainApiManager): ##@@##
                         else:
                             self.notify(f"Restored {len(market.limit_orders)} limit orders on {market.name}...")
             if self.strategy:
-                self.clock.add_iterator(self.strategy)
+                self.clock.add_iterator(self.strategy)                                          ##@@## strategy::c_tick
             try:
                 self._pmm_script_iterator = self.client_config_map.pmm_script_mode.get_iterator(
                     self.strategy_name, list(self.markets.values()), self.strategy

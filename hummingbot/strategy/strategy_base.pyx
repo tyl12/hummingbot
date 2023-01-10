@@ -303,7 +303,7 @@ cdef class StrategyBase(TimeIterator): ##@@##
         TimeIterator.c_start(self, clock, timestamp)
         self._sb_order_tracker.c_start(clock, timestamp)
 
-    cdef c_tick(self, double timestamp): ##@@##   a running strategy module is called every second via its c_tick() method to check on the markets and wallets,
+    cdef c_tick(self, double timestamp):        ##@@##   a running strategy module is called every second via its c_tick() method to check on the markets and wallets,
         TimeIterator.c_tick(self, timestamp)
         self._sb_order_tracker.c_tick(timestamp)
 

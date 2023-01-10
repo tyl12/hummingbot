@@ -290,7 +290,7 @@ class ExchangePyBase(ExchangeBase, ABC):
 
     # === Orders placing ===
 
-    def buy(self,
+    def buy(self,                   ##@@##
             trading_pair: str,
             amount: Decimal,
             order_type=OrderType.LIMIT,

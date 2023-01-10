@@ -83,9 +83,9 @@ cdef class Clock:
         self._child_iterators.remove(iterator)
 
     async def run(self):
-        await self.run_til(float("nan"))
+        await self.run_til(float("nan"))             ##@@##
 
-    async def run_til(self, timestamp: float):
+    async def run_til(self, timestamp: float):             ##@@##
         cdef:
             TimeIterator child_iterator
             double now = time.time()
@@ -116,7 +116,7 @@ cdef class Clock:
                 for ci in self._current_context:
                     child_iterator = ci
                     try:
-                        child_iterator.c_tick(self._current_tick)
+                        child_iterator.c_tick(self._current_tick)               ##@@##
                     except StopIteration:
                         self.logger().error("Stop iteration triggered in real time mode. This is not expected.")
                         return

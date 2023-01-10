@@ -357,7 +357,7 @@ cdef class ExchangeBase(ConnectorBase):
         """
         return Decimal(str(self.get_vwap_for_volume(trading_pair, is_buy, amount).result_price))
 
-    async def get_order_price(self, trading_pair: str, is_buy: bool, amount: Decimal) -> Decimal:
+    async def get_order_price(self, trading_pair: str, is_buy: bool, amount: Decimal) -> Decimal:  ##@@##
         """
         For an exchange type connector, the price required for order submission is the price of the order book for
         required volume.

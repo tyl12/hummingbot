@@ -244,7 +244,8 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
     @staticmethod
     @lru_cache(maxsize=10)
     def is_gateway_market(market_info: MarketTradingPairTuple) -> bool:
-        return market_info.market.name in AllConnectorSettings.get_gateway_amm_connector_names()
+        return market_info.market.name in AllConnectorSettings.get_gateway_amm_connector_names()  ##@@## 通过遍历 connector目录，获得dex exchanger 的信息
+                                                                                                    ##@@## hummingbot_conf/gateway_connections.json
 
     def get_conversion_rates(self, market_pair: MarketTradingPairTuple):
         quote_pair, quote_rate_source, quote_rate, base_pair, base_rate_source, base_rate, gas_pair, gas_rate_source,\
@@ -537,7 +538,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
 
             # Suppose the active order is hedged on the taker market right now, what's the average price the hedge
             # would happen?
-            current_hedging_price = await self.calculate_effective_hedging_price(
+            current_hedging_price = await self.calculate_effective_hedging_price(  ##@@## 对冲quantity ETH量，所对应的taker上的均价（USDT计）
                 market_pair,
                 is_buy,
                 active_order.quantity
@@ -545,7 +546,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
             self.logger().warning(f"##@@## current_hedging_price= {current_hedging_price}, market_pair={market_pair}, {active_order.quantity}")
 
             # See if it's still profitable to keep the order on maker market. If not, remove it.
-            if not await self.check_if_still_profitable(market_pair, active_order, current_hedging_price): ##@@##
+            if not await self.check_if_still_profitable(market_pair, active_order, current_hedging_price): ##@@##根据对冲的均价，计算是否能获利
                 continue
 
             if isinstance(self._config_map.order_refresh_mode, PassiveOrderRefreshMode):
@@ -920,7 +921,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
             maker_exchange_trade_id = maker_exchange_trade_ids[0]
 
             if self.is_gateway_market(market_pair.taker):  # taker是 DEX
-                order_price = await market_pair.taker.market.get_order_price( # taker报价
+                order_price = await market_pair.taker.market.get_order_price( # taker报价; same as  taker_market.get_order_price();
                     taker_trading_pair,
                     False,
                     quantized_hedge_amount)
@@ -930,7 +931,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                 taker_top = order_price
             else:
                 taker_top = taker_market.get_price(taker_trading_pair, False)
-                order_price = taker_market.get_price_for_volume(  ##@@## 调用 exchange_base.py => order_book.pyx => 通过orderbook获取报价
+                order_price = taker_market.get_price_for_volume(  ##@@## quantized_hedge_amount量对应的orderbook上的报价 ;调用 exchange_base.py => order_book.pyx => 通过orderbook获取报价
                     taker_trading_pair, False, quantized_hedge_amount
                 ).result_price
 
@@ -945,7 +946,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                     False,
                     False,
                     quantized_hedge_amount,
-                    order_price,
+                    order_price,  ##@@## 注意报价是用的orderbook对应档位的价格（对于CEX情况），而非买卖量的vwap 平均报价
                     maker_order_id,
                     maker_exchange_trade_id
                 )
@@ -971,7 +972,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
             taker_slippage_adjustment_factor = Decimal("1") + self.slippage_buffer
 
             if self.is_gateway_market(market_pair.taker):
-                taker_price = await market_pair.taker.market.get_order_price(
+                taker_price = await market_pair.taker.market.get_order_price(  ##@@## gateway_evm_amm.py
                     taker_trading_pair,
                     True,
                     sell_fill_quantity / base_rate
@@ -980,7 +981,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                     self.logger().warning("Gateway: failed to obtain order price. No hedging order will be submitted.")
                     return
             else:
-                taker_price = taker_market.get_price_for_volume(
+                taker_price = taker_market.get_price_for_volume( ##@@## orderbook报价档位
                     taker_trading_pair,
                     True,
                     sell_fill_quantity / base_rate
@@ -1355,7 +1356,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                     return s_decimal_nan
             else:
                 try:
-                    taker_price = taker_market.get_vwap_for_volume(taker_trading_pair, False, size).result_price
+                    taker_price = taker_market.get_vwap_for_volume(taker_trading_pair, False, size).result_price  ##@@## ETH 均价
                 except ZeroDivisionError:
                     return None
 
@@ -1376,7 +1377,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                     return s_decimal_nan
             else:
                 try:
-                    taker_price = taker_market.get_vwap_for_volume(taker_trading_pair, True, size).result_price
+                    taker_price = taker_market.get_vwap_for_volume(taker_trading_pair, True, size).result_price  ##@@## ETH 均价
                 except ZeroDivisionError:
                     return None
 
@@ -1684,7 +1685,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
             if bid_size > s_decimal_zero:
                 bid_price = await self.get_market_making_price(market_pair, True, bid_size)  ##@@## 获取maker上bid_size对应的 买单报价
                 if not Decimal.is_nan(bid_price):
-                    effective_hedging_price = await self.calculate_effective_hedging_price( ## 计算taker上 bid_size对应的 对冲报价
+                    effective_hedging_price = await self.calculate_effective_hedging_price( ## 计算taker上 bid_size对应的 对冲均价
                         market_pair,
                         True,
                         bid_size
@@ -1723,7 +1724,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
             if ask_size > s_decimal_zero:
                 ask_price = await self.get_market_making_price(market_pair, False, ask_size)
                 if not Decimal.is_nan(ask_price):
-                    effective_hedging_price = await self.calculate_effective_hedging_price(
+                    effective_hedging_price = await self.calculate_effective_hedging_price( ##@@## 对冲均价
                         market_pair,
                         False,
                         ask_size
@@ -1775,7 +1776,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         order_id = None
         if is_buy:
             try:
-                order_id = self.buy_with_specific_market(market_info, amount,
+                order_id = self.buy_with_specific_market(market_info, amount,           ## => exchnage_py_base.py::buy()/_create_order() => binance_exchange.py:: _place_order()
                                                          order_type=order_type, price=price,
                                                          expiration_seconds=expiration_seconds) ##@@## 调用基类函数进行下单操作，同时，基类内部会进行order tracker; 下单返回 order_id
             except ValueError as e:

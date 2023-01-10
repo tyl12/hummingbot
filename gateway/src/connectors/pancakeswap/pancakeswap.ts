@@ -160,7 +160,7 @@ export class PancakeSwap implements Uniswapish {
    * @param amount Amount of `baseToken` desired from the transaction
    * @param allowedSlippage (Optional) Fraction in string representing the allowed slippage for this transaction
    */
-  async estimateBuyTrade(
+  async estimateBuyTrade(                                                                                            //##@@##
     quoteToken: Token,
     baseToken: Token,
     amount: BigNumber,
