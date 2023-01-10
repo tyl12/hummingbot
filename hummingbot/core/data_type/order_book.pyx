@@ -371,7 +371,7 @@ cdef class OrderBook(PubSub):
 
         return OrderBookQueryResult(NaN, volume, result_vwap, min(total_volume, volume))
 
-    cdef OrderBookQueryResult c_get_price_for_quote_volume(self, bint is_buy, double quote_volume):
+    cdef OrderBookQueryResult c_get_price_for_quote_volume(self, bint is_buy, double quote_volume): ##@@## 指定USDT交易总量，对应的ETH的orderbook报价
         cdef:
             double cumulative_volume = 0
             double result_price = NaN

@@ -176,7 +176,7 @@ cdef class ExchangeBase(ConnectorBase):
                                           result_price,
                                           result_volume)
 
-    cdef ClientOrderBookQueryResult c_get_price_for_quote_volume(self, str trading_pair, bint is_buy, double volume): ##@@## 指定基准货币 USDT的总量，计算对应可以买卖的 商品 ETH的总量
+    cdef ClientOrderBookQueryResult c_get_price_for_quote_volume(self, str trading_pair, bint is_buy, double volume): ##@@## 指定基准货币 USDT的总量，对应的ETH的orderbook报价
         cdef:
             OrderBook order_book = self.c_get_order_book(trading_pair)
             OrderBookQueryResult result = order_book.c_get_price_for_quote_volume(is_buy, float(volume))

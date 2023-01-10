@@ -1146,7 +1146,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                     return s_decimal_zero
             else:
                 try:
-                    taker_price = taker_market.get_vwap_for_volume(     ## CEX上，卖 taker_size ETH涉及的ETH报价
+                    taker_price = taker_market.get_vwap_for_volume(     ## CEX上，卖 taker_size ETH，可获得的ETH均价是多少;  ##@@## 调用 exchange_base.py => order_book.pyx => 通过orderbook获取报价
                         taker_trading_pair, False, taker_size
                     ).result_price
                 except ZeroDivisionError:
@@ -1158,7 +1158,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                 order_amount = Decimal("0")
             else:
                 maker_balance = maker_balance_in_quote / \
-                    (taker_price * self.markettaker_to_maker_base_conversion_rate(market_pair))   ##maker上USD总量/taker上ETH报价=>可买的eth总量
+                    (taker_price * self.markettaker_to_maker_base_conversion_rate(market_pair))   ##maker上USD总量/taker上ETH的均价 => 可买的eth总量
                 taker_balance *= base_rate  ## taker上可用于对冲的ETH总量
                 order_amount = min(maker_balance, taker_balance, size) ## maker上ETH可用量， taker上。。。， config_map中指定的order_amount折算量  
 
@@ -1181,7 +1181,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                     return s_decimal_zero
             else:
                 try:
-                    taker_price = taker_market.get_price_for_quote_volume(
+                    taker_price = taker_market.get_price_for_quote_volume(  ##@@## 指定基准货币 USDT的总量，对应的ETH的orderbook报价
                         taker_trading_pair, True, size
                     ).result_price
                 except ZeroDivisionError:
