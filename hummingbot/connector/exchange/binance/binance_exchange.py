@@ -62,7 +62,7 @@ class BinanceExchange(ExchangePyBase):  ##@@##
         return OrderType[binance_type]
 
     @property
-    def authenticator(self):
+    def authenticator(self): ##@@## ExchangePyBase 中 ws/rest 连接时检查使用
         return BinanceAuth(
             api_key=self.api_key,
             secret_key=self.secret_key,
@@ -128,7 +128,7 @@ class BinanceExchange(ExchangePyBase):  ##@@##
                                         and "Timestamp for this request" in error_description)
         return is_time_synchronizer_related
 
-    def _create_web_assistants_factory(self) -> WebAssistantsFactory:
+    def _create_web_assistants_factory(self) -> WebAssistantsFactory:  ##@@##
         return web_utils.build_api_factory(
             throttler=self._throttler,
             time_synchronizer=self._time_synchronizer,

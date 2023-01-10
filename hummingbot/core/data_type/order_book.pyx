@@ -57,7 +57,7 @@ cdef class OrderBook(PubSub):
         self._last_trade_price_rest_updated = -1000
         self._dex = dex
 
-    cdef c_apply_diffs(self, vector[OrderBookEntry] bids, vector[OrderBookEntry] asks, int64_t update_id):
+    cdef c_apply_diffs(self, vector[OrderBookEntry] bids, vector[OrderBookEntry] asks, int64_t update_id): ##@@##
         cdef:
             set[OrderBookEntry].iterator bid_book_end = self._bid_book.end()
             set[OrderBookEntry].iterator ask_book_end = self._ask_book.end()
@@ -89,10 +89,10 @@ cdef class OrderBook(PubSub):
         ask_iterator = self._ask_book.begin()
         if bid_iterator != self._bid_book.rend():
             top_bid = deref(bid_iterator)
-            self._best_bid = top_bid.getPrice()
+            self._best_bid = top_bid.getPrice()   ##@@## 买方最高报价
         if ask_iterator != self._ask_book.end():
             top_ask = deref(ask_iterator)
-            self._best_ask = top_ask.getPrice()
+            self._best_ask = top_ask.getPrice()  ##@@## 卖方最低报价
 
         # Remember the last diff update ID.
         self._last_diff_uid = update_id
@@ -178,7 +178,7 @@ cdef class OrderBook(PubSub):
         asks_df = pd.DataFrame(data=asks_rows, columns=OrderBookRow._fields, dtype="float64")
         return bids_df, asks_df
 
-    def apply_diffs(self, bids: List[OrderBookRow], asks: List[OrderBookRow], update_id: int):
+    def apply_diffs(self, bids: List[OrderBookRow], asks: List[OrderBookRow], update_id: int): ##@@##
         cdef:
             vector[OrderBookEntry] cpp_bids
             vector[OrderBookEntry] cpp_asks
@@ -339,14 +339,14 @@ cdef class OrderBook(PubSub):
 
         return OrderBookQueryResult(NaN, volume, result_price, min(cumulative_volume, volume))
 
-    cdef OrderBookQueryResult c_get_vwap_for_volume(self, bint is_buy, double volume):
+    cdef OrderBookQueryResult c_get_vwap_for_volume(self, bint is_buy, double volume): ##@@## 查询指定ETH交易量对应的平均价
         cdef:
             double total_cost = 0
             double total_volume = 0
             double result_vwap = NaN
         if is_buy:
             for order_book_row in self.ask_entries():
-                total_cost += order_book_row.amount * order_book_row.price
+                total_cost += order_book_row.amount * order_book_row.price  ## 逐级加总orderbook上的报价和交易量，直至达到需要的下单量
                 total_volume += order_book_row.amount
                 if total_volume >= volume:
                     total_cost -= order_book_row.amount * order_book_row.price
@@ -354,7 +354,7 @@ cdef class OrderBook(PubSub):
                     incremental_amount = volume - total_volume
                     total_cost += incremental_amount * order_book_row.price
                     total_volume += incremental_amount
-                    result_vwap = total_cost / total_volume
+                    result_vwap = total_cost / total_volume  ##@@## 成交的总USDT花费/成交的总ETH量 => 成交的 ETH 平均价格
                     break
         else:
             for order_book_row in self.bid_entries():
@@ -389,7 +389,7 @@ cdef class OrderBook(PubSub):
                     result_price = order_book_row.price
                     break
 
-        return OrderBookQueryResult(NaN, quote_volume, result_price, min(cumulative_volume, quote_volume))
+        return OrderBookQueryResult(NaN, quote_volume, result_price, min(cumulative_volume, quote_volume))  ## min是为了处理，有可能把orderbook吃完了，都没有满足quote_volume量
 
     cdef OrderBookQueryResult c_get_quote_volume_for_base_amount(self, bint is_buy, double base_amount):
         cdef:
@@ -484,7 +484,7 @@ cdef class OrderBook(PubSub):
     def diff_message_from_kafka(cls, record: ConsumerRecord, metadata: Optional[Dict] = None) -> OrderBookMessage:
         pass
 
-    def restore_from_snapshot_and_diffs(self, snapshot: OrderBookMessage, diffs: List[OrderBookMessage]):
+    def restore_from_snapshot_and_diffs(self, snapshot: OrderBookMessage, diffs: List[OrderBookMessage]): ##@@##
         replay_position = bisect.bisect_right(diffs, snapshot)
         replay_diffs = diffs[replay_position:]
         self.apply_snapshot(snapshot.bids, snapshot.asks, snapshot.update_id)

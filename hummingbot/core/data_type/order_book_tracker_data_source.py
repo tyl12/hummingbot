@@ -23,7 +23,7 @@ class OrderBookTrackerDataSource(metaclass=ABCMeta):
 
         self._trading_pairs: List[str] = trading_pairs
         self._order_book_create_function = lambda: OrderBook()
-        self._message_queue: Dict[str, asyncio.Queue] = defaultdict(asyncio.Queue)
+        self._message_queue: Dict[str, asyncio.Queue] = defaultdict(asyncio.Queue) ##@@## 保存接收到的ws消息
 
     @classmethod
     def logger(cls) -> HummingbotLogger:
@@ -67,7 +67,7 @@ class OrderBookTrackerDataSource(metaclass=ABCMeta):
         order_book.apply_snapshot(snapshot_msg.bids, snapshot_msg.asks, snapshot_msg.update_id)
         return order_book
 
-    async def listen_for_subscriptions(self):
+    async def listen_for_subscriptions(self): ##@@##
         """
         Connects to the trade events and order diffs websocket endpoints and listens to the messages sent by the
         exchange. Each message is stored in its own queue.
@@ -76,8 +76,8 @@ class OrderBookTrackerDataSource(metaclass=ABCMeta):
         while True:
             try:
                 ws: WSAssistant = await self._connected_websocket_assistant()
-                await self._subscribe_channels(ws)
-                await self._process_websocket_messages(websocket_assistant=ws)
+                await self._subscribe_channels(ws)  ##@@## 调用具体exchange的实现，监听 ws
+                await self._process_websocket_messages(websocket_assistant=ws)  ##@@## 不断读取ws消息，放入异步队列
             except asyncio.CancelledError:
                 raise
             except ConnectionError as connection_exception:
@@ -90,6 +90,8 @@ class OrderBookTrackerDataSource(metaclass=ABCMeta):
             finally:
                 await self._on_order_stream_interruption(websocket_assistant=ws)
 
+
+    ##@@## order_book_tracker.py :: _order_book_diff_listener_task() will call this
     async def listen_for_order_book_diffs(self, ev_loop: asyncio.AbstractEventLoop, output: asyncio.Queue):
         """
         Reads the order diffs events queue. For each event creates a diff message instance and adds it to the
@@ -98,12 +100,12 @@ class OrderBookTrackerDataSource(metaclass=ABCMeta):
         :param ev_loop: the event loop the method will run in
         :param output: a queue to add the created diff messages
         """
-        message_queue = self._message_queue[self._diff_messages_queue_key]
+        message_queue = self._message_queue[self._diff_messages_queue_key]  ## 消费者
         while True:
             try:
-                diff_event = await message_queue.get()
-                await self._parse_order_book_diff_message(raw_message=diff_event, message_queue=output)
-
+                diff_event = await message_queue.get() ##@@## 从缓存ws消息的消息队列中读取， 解析消息
+                await self._parse_order_book_diff_message(raw_message=diff_event, message_queue=output) ## call binance_api_order_book_data_source.py::...
+                                                                                                            ## 解析交易所消息， 最后的消息写入 output
             except asyncio.CancelledError:
                 raise
             except Exception:
@@ -124,7 +126,7 @@ class OrderBookTrackerDataSource(metaclass=ABCMeta):
             try:
                 try:
                     snapshot_event = await asyncio.wait_for(message_queue.get(),
-                                                            timeout=self.FULL_ORDER_BOOK_RESET_DELTA_SECONDS)
+                                                            timeout=self.FULL_ORDER_BOOK_RESET_DELTA_SECONDS) ##@@## httprequest to get snapshot
                     await self._parse_order_book_snapshot_message(raw_message=snapshot_event, message_queue=output)
                 except asyncio.TimeoutError:
                     await self._request_order_book_snapshots(output=output)
@@ -229,14 +231,14 @@ class OrderBookTrackerDataSource(metaclass=ABCMeta):
         """
         pass
 
-    async def _process_websocket_messages(self, websocket_assistant: WSAssistant):
-        async for ws_response in websocket_assistant.iter_messages():
+    async def _process_websocket_messages(self, websocket_assistant: WSAssistant):   ## 生产者
+        async for ws_response in websocket_assistant.iter_messages(): ##@@## while 循环 不断读取ws消息;    ##@@## ws_assistant.iter_messages()
             data: Dict[str, Any] = ws_response.data
             if data is not None:  # data will be None when the websocket is disconnected
                 channel: str = self._channel_originating_message(event_message=data)
                 valid_channels = self._get_messages_queue_keys()
                 if channel in valid_channels:
-                    self._message_queue[channel].put_nowait(data)
+                    self._message_queue[channel].put_nowait(data)  ##@@## 将消息放入 队列
                 else:
                     await self._process_message_for_unknown_channel(
                         event_message=data, websocket_assistant=websocket_assistant

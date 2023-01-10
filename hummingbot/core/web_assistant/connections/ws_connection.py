@@ -32,7 +32,7 @@ class WSConnection:
         ws_headers: Optional[Dict] = {},
     ):
         self._ensure_not_connected()
-        self._connection = await self._client_session.ws_connect(
+        self._connection = await self._client_session.ws_connect(  ##@@## ws connect
             ws_url,
             headers=ws_headers,
             autoping=False,
@@ -54,12 +54,12 @@ class WSConnection:
     async def ping(self):
         await self._connection.ping()
 
-    async def receive(self) -> Optional[WSResponse]:
+    async def receive(self) -> Optional[WSResponse]:  ##@@## 读取一条有效消息, 从 ws_assistant.iter_messages() 调入
         self._ensure_connected()
         response = None
         while self._connected:
-            msg = await self._read_message()
-            msg = await self._process_message(msg)
+            msg = await self._read_message() ##@@## 读取消息
+            msg = await self._process_message(msg) ##@@## 处理ping/pong/close消息并更新时间戳
             if msg is not None:
                 response = self._build_resp(msg)
                 break
@@ -81,8 +81,8 @@ class WSConnection:
         return msg
 
     async def _process_message(self, msg: aiohttp.WSMessage) -> Optional[aiohttp.WSMessage]:
-        msg = await self._check_msg_types(msg)
-        self._update_last_recv_time(msg)
+        msg = await self._check_msg_types(msg)  ##@@## 单独处理 close/ping/pong消息
+        self._update_last_recv_time(msg)  ##@@## 更新最新一次接收到ws消息的时间戳
         return msg
 
     async def _check_msg_types(self, msg: aiohttp.WSMessage) -> Optional[aiohttp.WSMessage]:

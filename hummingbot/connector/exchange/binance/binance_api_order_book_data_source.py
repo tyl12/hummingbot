@@ -63,7 +63,7 @@ class BinanceAPIOrderBookDataSource(OrderBookTrackerDataSource):
 
         return data
 
-    async def _subscribe_channels(self, ws: WSAssistant):
+    async def _subscribe_channels(self, ws: WSAssistant):   ##@@##  基类 OrderBookTrackerDataSource 中调用
         """
         Subscribes to the trade events and diff orders events through the provided websocket connection.
         :param ws: the websocket assistant used to connect to the exchange
@@ -80,14 +80,14 @@ class BinanceAPIOrderBookDataSource(OrderBookTrackerDataSource):
                 "params": trade_params,
                 "id": 1
             }
-            subscribe_trade_request: WSJSONRequest = WSJSONRequest(payload=payload)
+            subscribe_trade_request: WSJSONRequest = WSJSONRequest(payload=payload)  ##@@## 订阅trade信息
 
             payload = {
                 "method": "SUBSCRIBE",
                 "params": depth_params,
                 "id": 2
             }
-            subscribe_orderbook_request: WSJSONRequest = WSJSONRequest(payload=payload)
+            subscribe_orderbook_request: WSJSONRequest = WSJSONRequest(payload=payload)     ##@@## 订阅orderbook信息
 
             await ws.send(subscribe_trade_request)
             await ws.send(subscribe_orderbook_request)
@@ -105,10 +105,10 @@ class BinanceAPIOrderBookDataSource(OrderBookTrackerDataSource):
     async def _connected_websocket_assistant(self) -> WSAssistant:
         ws: WSAssistant = await self._api_factory.get_ws_assistant()
         await ws.connect(ws_url=CONSTANTS.WSS_URL.format(self._domain),
-                         ping_timeout=CONSTANTS.WS_HEARTBEAT_TIME_INTERVAL)
+                         ping_timeout=CONSTANTS.WS_HEARTBEAT_TIME_INTERVAL)  ##@@## 连接 ws
         return ws
 
-    async def _order_book_snapshot(self, trading_pair: str) -> OrderBookMessage:
+    async def _order_book_snapshot(self, trading_pair: str) -> OrderBookMessage:  ## order_book_tracker_data_source.py 基类中会调用，向交易所发送http请求获取一次完整的orderbook
         snapshot: Dict[str, Any] = await self._request_order_book_snapshot(trading_pair)
         snapshot_timestamp: float = time.time()
         snapshot_msg: OrderBookMessage = BinanceOrderBook.snapshot_message_from_exchange(
@@ -125,6 +125,8 @@ class BinanceAPIOrderBookDataSource(OrderBookTrackerDataSource):
                 raw_message, {"trading_pair": trading_pair})
             message_queue.put_nowait(trade_message)
 
+
+    ##@@##  基类 order_book_tracker_data_source.py:: OrderBookTrackerDataSource::
     async def _parse_order_book_diff_message(self, raw_message: Dict[str, Any], message_queue: asyncio.Queue):
         if "result" not in raw_message:
             trading_pair = await self._connector.trading_pair_associated_to_exchange_symbol(symbol=raw_message["s"])

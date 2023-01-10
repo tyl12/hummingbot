@@ -930,7 +930,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                 taker_top = order_price
             else:
                 taker_top = taker_market.get_price(taker_trading_pair, False)
-                order_price = taker_market.get_price_for_volume(
+                order_price = taker_market.get_price_for_volume(  ##@@## 调用 exchange_base.py => order_book.pyx => 通过orderbook获取报价
                     taker_trading_pair, False, quantized_hedge_amount
                 ).result_price
 

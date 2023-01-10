@@ -150,7 +150,7 @@ cdef class ExchangeBase(ConnectorBase):
     cdef OrderBook c_get_order_book(self, str trading_pair):
         return self.get_order_book(trading_pair)
 
-    cdef object c_get_price(self, str trading_pair, bint is_buy):
+    cdef object c_get_price(self, str trading_pair, bint is_buy): ##@@## orderbook上买卖对应的一级单报价
         """
         :returns: Top bid/ask price for a specific trading pair
         """
@@ -164,7 +164,7 @@ cdef class ExchangeBase(ConnectorBase):
             return s_decimal_NaN
         return self.c_quantize_order_price(trading_pair, top_price)
 
-    cdef ClientOrderBookQueryResult c_get_vwap_for_volume(self, str trading_pair, bint is_buy, object volume):
+    cdef ClientOrderBookQueryResult c_get_vwap_for_volume(self, str trading_pair, bint is_buy, object volume): ##@@##  vwap: volume weighted average price. 指定ETH交易量，获得ETH的平均交易价
         cdef:
             OrderBook order_book = self.c_get_order_book(trading_pair)
             OrderBookQueryResult result = order_book.c_get_vwap_for_volume(is_buy, float(volume))
@@ -176,7 +176,7 @@ cdef class ExchangeBase(ConnectorBase):
                                           result_price,
                                           result_volume)
 
-    cdef ClientOrderBookQueryResult c_get_price_for_quote_volume(self, str trading_pair, bint is_buy, double volume):
+    cdef ClientOrderBookQueryResult c_get_price_for_quote_volume(self, str trading_pair, bint is_buy, double volume): ##@@## 指定基准货币 USDT的总量，计算对应可以买卖的 商品 ETH的总量
         cdef:
             OrderBook order_book = self.c_get_order_book(trading_pair)
             OrderBookQueryResult result = order_book.c_get_price_for_quote_volume(is_buy, float(volume))
@@ -188,7 +188,7 @@ cdef class ExchangeBase(ConnectorBase):
                                           result_price,
                                           result_volume)
 
-    cdef ClientOrderBookQueryResult c_get_price_for_volume(self, str trading_pair, bint is_buy, object volume):
+    cdef ClientOrderBookQueryResult c_get_price_for_volume(self, str trading_pair, bint is_buy, object volume): ##@@## 指定买卖的ETH量， 计算对应的最高档报价
         cdef:
             OrderBook order_book = self.c_get_order_book(trading_pair)
             OrderBookQueryResult result = order_book.c_get_price_for_volume(is_buy, float(volume))
@@ -201,7 +201,7 @@ cdef class ExchangeBase(ConnectorBase):
                                           result_volume)
 
     cdef ClientOrderBookQueryResult c_get_quote_volume_for_base_amount(self, str trading_pair, bint is_buy,
-                                                                       object base_amount):
+                                                                       object base_amount):                  ##@@## 指定买卖的ETH总量，计算需要的 USDT量
         cdef:
             OrderBook order_book = self.c_get_order_book(trading_pair)
             OrderBookQueryResult result = order_book.c_get_quote_volume_for_base_amount(is_buy, float(base_amount))
@@ -212,7 +212,7 @@ cdef class ExchangeBase(ConnectorBase):
                                           s_decimal_NaN,
                                           result_volume)
 
-    cdef ClientOrderBookQueryResult c_get_volume_for_price(self, str trading_pair, bint is_buy, object price):
+    cdef ClientOrderBookQueryResult c_get_volume_for_price(self, str trading_pair, bint is_buy, object price): ##@@## 指定报价，获取可以买到的ETH量
         cdef:
             OrderBook order_book = self.c_get_order_book(trading_pair)
             OrderBookQueryResult result = order_book.c_get_volume_for_price(is_buy, float(price))
@@ -224,10 +224,10 @@ cdef class ExchangeBase(ConnectorBase):
                                           result_price,
                                           result_volume)
 
-    cdef ClientOrderBookQueryResult c_get_quote_volume_for_price(self, str trading_pair, bint is_buy, object price):
+    cdef ClientOrderBookQueryResult c_get_quote_volume_for_price(self, str trading_pair, bint is_buy, object price): ##@@## 指定报价，需要花费的USDT的总量 ??????
         cdef:
             OrderBook order_book = self.c_get_order_book(trading_pair)
-            OrderBookQueryResult result = order_book.c_get_volume_for_price(is_buy, float(price))
+            OrderBookQueryResult result = order_book.c_get_volume_for_price(is_buy, float(price))       ##????? 此处应为 c_get_quote_volume_for_price() ?????
             object query_price = self.c_quantize_order_price(trading_pair, Decimal(result.query_price))
             object result_price = self.c_quantize_order_price(trading_pair, Decimal(result.result_price))
             object result_volume = Decimal(str(result.result_volume))
@@ -252,10 +252,10 @@ cdef class ExchangeBase(ConnectorBase):
                                      self.c_quantize_order_amount(trading_pair, Decimal(entry.amount)),
                                      entry.update_id)
 
-    def get_vwap_for_volume(self, trading_pair: str, is_buy: bool, volume: Decimal):
+    def get_vwap_for_volume(self, trading_pair: str, is_buy: bool, volume: Decimal): ##@@## vwap: volume weighted average price; 指定ETH交易量，获得ETH的平均交易价
         return self.c_get_vwap_for_volume(trading_pair, is_buy, volume)
 
-    def get_price_for_quote_volume(self, trading_pair: str, is_buy: bool, volume: Decimal):
+    def get_price_for_quote_volume(self, trading_pair: str, is_buy: bool, volume: Decimal): ##@@##指定 USDT总量，得到对应的ETH的orderbook,
         return self.c_get_price_for_quote_volume(trading_pair, is_buy, volume)
 
     def get_price_for_volume(self, trading_pair: str, is_buy: bool, volume: Decimal):
@@ -351,7 +351,7 @@ cdef class ExchangeBase(ConnectorBase):
         elif price_type is PriceType.LastTrade:
             return Decimal(self.c_get_order_book(trading_pair).last_trade_price)
 
-    async def get_quote_price(self, trading_pair: str, is_buy: bool, amount: Decimal) -> Decimal:
+    async def get_quote_price(self, trading_pair: str, is_buy: bool, amount: Decimal) -> Decimal: 
         """
         For an exchange type connector, the quote price is volume weighted average price.
         """

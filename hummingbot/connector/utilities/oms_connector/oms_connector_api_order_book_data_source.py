@@ -170,7 +170,7 @@ class OMSConnectorAPIOrderBookDataSource(OrderBookTrackerDataSource):
         if event_message[CONSTANTS.MSG_TYPE_FIELD] != CONSTANTS.ERROR_MSG_TYPE:
             event_channel = event_message[CONSTANTS.MSG_ENDPOINT_FIELD]
             if event_channel == CONSTANTS.WS_L2_EVENT:
-                channel = self._diff_messages_queue_key
+                channel = self._diff_messages_queue_key  ## "order_book_diff"
         return channel
 
     async def _process_websocket_messages(self, websocket_assistant: WSAssistant):

@@ -49,7 +49,7 @@ class BinanceAPIUserStreamDataSource(UserStreamTrackerDataSource):
         await ws.connect(ws_url=url, ping_timeout=CONSTANTS.WS_HEARTBEAT_TIME_INTERVAL)
         return ws
 
-    async def _subscribe_channels(self, websocket_assistant: WSAssistant):
+    async def _subscribe_channels(self, websocket_assistant: WSAssistant):  ##@@##
         """
         Subscribes to the trade events and diff orders events through the provided websocket connection.
 

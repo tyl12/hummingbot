@@ -40,8 +40,8 @@ class OrderBookTracker:
         self._order_books: Dict[str, OrderBook] = {}
         self._tracking_message_queues: Dict[str, asyncio.Queue] = {}
         self._past_diffs_windows: Dict[str, Deque] = defaultdict(lambda: deque(maxlen=self.PAST_DIFF_WINDOW_SIZE))
-        self._order_book_diff_stream: asyncio.Queue = asyncio.Queue()
-        self._order_book_snapshot_stream: asyncio.Queue = asyncio.Queue()
+        self._order_book_diff_stream: asyncio.Queue = asyncio.Queue()  ##@@## 用于保存接收到并解析完成的order book update消息
+        self._order_book_snapshot_stream: asyncio.Queue = asyncio.Queue()  ##@@## 保存发送http request后接收到的orderbook snapshot消息
         self._order_book_trade_stream: asyncio.Queue = asyncio.Queue()
         self._ev_loop: asyncio.BaseEventLoop = asyncio.get_event_loop()
         self._saved_message_queues: Dict[str, Deque[OrderBookMessage]] = defaultdict(lambda: deque(maxlen=1000))
@@ -84,13 +84,13 @@ class OrderBookTracker:
             self._emit_trade_event_loop()
         )
         self._order_book_diff_listener_task = safe_ensure_future(
-            self._data_source.listen_for_order_book_diffs(self._ev_loop, self._order_book_diff_stream)
+            self._data_source.listen_for_order_book_diffs(self._ev_loop, self._order_book_diff_stream)  ##@@## 监听orderbook diff 消息，解析完后，写入  _order_book_diff_stream
         )
         self._order_book_trade_listener_task = safe_ensure_future(
             self._data_source.listen_for_trades(self._ev_loop, self._order_book_trade_stream)
         )
         self._order_book_snapshot_listener_task = safe_ensure_future(
-            self._data_source.listen_for_order_book_snapshots(self._ev_loop, self._order_book_snapshot_stream)
+            self._data_source.listen_for_order_book_snapshots(self._ev_loop, self._order_book_snapshot_stream) ##@@## 输入写入 _order_book_snapshot_stream
         )
         self._order_book_stream_listener_task = safe_ensure_future(
             self._data_source.listen_for_subscriptions()
@@ -182,7 +182,7 @@ class OrderBookTracker:
             await asyncio.sleep(1)
         self._order_books_initialized.set()
 
-    async def _order_book_diff_router(self):
+    async def _order_book_diff_router(self): ##@@## ！！！！！
         """
         Routes the real-time order book diff messages to the correct order book.
         """
@@ -193,22 +193,22 @@ class OrderBookTracker:
 
         while True:
             try:
-                ob_message: OrderBookMessage = await self._order_book_diff_stream.get()
+                ob_message: OrderBookMessage = await self._order_book_diff_stream.get()  ##@@## _order_book_diff_stream队列中存着从ws接收到并解析完成的orderbook diff消息，写入的地方是在 order_book_tracker_data_source.py::listen_for_order_book_diffs()
                 trading_pair: str = ob_message.trading_pair
 
                 if trading_pair not in self._tracking_message_queues:
                     messages_queued += 1
                     # Save diff messages received before snapshots are ready
-                    self._saved_message_queues[trading_pair].append(ob_message)
+                    self._saved_message_queues[trading_pair].append(ob_message)  ##@@## 22
                     continue
-                message_queue: asyncio.Queue = self._tracking_message_queues[trading_pair]
+                message_queue: asyncio.Queue = self._tracking_message_queues[trading_pair]  ##@@## 11， _tracking_message_queues 保存orderbook diff update数据
                 # Check the order book's initial update ID. If it's larger, don't bother.
                 order_book: OrderBook = self._order_books[trading_pair]
 
-                if order_book.snapshot_uid > ob_message.update_id:
+                if order_book.snapshot_uid > ob_message.update_id:  ##@@##
                     messages_rejected += 1
                     continue
-                await message_queue.put(ob_message)
+                await message_queue.put(ob_message)  ##@@## 11
                 messages_accepted += 1
 
                 # Log some statistics.
@@ -253,7 +253,7 @@ class OrderBookTracker:
     async def _track_single_book(self, trading_pair: str):
         past_diffs_window = self._past_diffs_windows[trading_pair]
 
-        message_queue: asyncio.Queue = self._tracking_message_queues[trading_pair]
+        message_queue: asyncio.Queue = self._tracking_message_queues[trading_pair]  ## 11, _tracking_message_queues 保存orderbook diff update数据
         order_book: OrderBook = self._order_books[trading_pair]
         last_message_timestamp: float = time.time()
         diff_messages_accepted: int = 0
@@ -266,10 +266,10 @@ class OrderBookTracker:
                 if len(saved_messages) > 0:
                     message = saved_messages.popleft()
                 else:
-                    message = await message_queue.get()
+                    message = await message_queue.get()  ## 11
 
-                if message.type is OrderBookMessageType.DIFF:
-                    order_book.apply_diffs(message.bids, message.asks, message.update_id)
+                if message.type is OrderBookMessageType.DIFF: ## 处理 orderbook 差分消息
+                    order_book.apply_diffs(message.bids, message.asks, message.update_id)  ##@@## !!!!! 将差分消息合并入snapshot消息，拼凑成完整的最新 shapshot 消息
                     past_diffs_window.append(message)
                     diff_messages_accepted += 1
 
@@ -279,9 +279,9 @@ class OrderBookTracker:
                         self.logger().debug(f"Processed {diff_messages_accepted} order book diffs for {trading_pair}.")
                         diff_messages_accepted = 0
                     last_message_timestamp = now
-                elif message.type is OrderBookMessageType.SNAPSHOT:
+                elif message.type is OrderBookMessagemessageType.SNAPSHOT: ##  处理 orderbook snapshot消息
                     past_diffs: List[OrderBookMessage] = list(past_diffs_window)
-                    order_book.restore_from_snapshot_and_diffs(message, past_diffs)
+                    order_book.restore_from_snapshot_and_diffs(message, past_diffs) ##@@##  !!!!! 
                     self.logger().debug(f"Processed order book snapshot for {trading_pair}.")
             except asyncio.CancelledError:
                 raise

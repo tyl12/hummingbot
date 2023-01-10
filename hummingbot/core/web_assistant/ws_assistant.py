@@ -45,7 +45,7 @@ class WSAssistant:
         message_timeout: Optional[float] = None,
         ws_headers: Optional[Dict] = {},
     ):
-        await self._connection.connect(ws_url=ws_url, ws_headers=ws_headers, ping_timeout=ping_timeout, message_timeout=message_timeout)
+        await self._connection.connect(ws_url=ws_url, ws_headers=ws_headers, ping_timeout=ping_timeout, message_timeout=message_timeout)  ##@@##
 
     async def disconnect(self):
         await self._connection.disconnect()
@@ -58,22 +58,22 @@ class WSAssistant:
         request = deepcopy(request)
         request = await self._pre_process_request(request)
         request = await self._authenticate(request)
-        await self._connection.send(request)
+        await self._connection.send(request) ##@@##   参考 WebAssistantsFactory.get_ws_assistant
 
     async def ping(self):
         await self._connection.ping()
 
-    async def iter_messages(self) -> AsyncGenerator[Optional[WSResponse], None]:
+    async def iter_messages(self) -> AsyncGenerator[Optional[WSResponse], None]: ##@@## !!!!!
         """Will yield None and stop if `WSDelegate.disconnect()` is called while waiting for a response."""
         while self._connection.connected:
-            response = await self._connection.receive()
+            response = await self._connection.receive()  ##@@## !!!!!  ws_connection.receive()
             if response is not None:
                 response = await self._post_process_response(response)
                 yield response
 
     async def receive(self) -> Optional[WSResponse]:
         """This method will return `None` if `WSDelegate.disconnect()` is called while waiting for a response."""
-        response = await self._connection.receive()
+        response = await self._connection.receive() ##@@## 接收 ws 消息
         if response is not None:
             response = await self._post_process_response(response)
         return response
