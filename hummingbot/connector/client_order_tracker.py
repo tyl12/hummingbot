@@ -39,7 +39,7 @@ class ClientOrderTracker:
             cot_logger = logging.getLogger(__name__)
         return cot_logger
 
-    def __init__(self, connector: ConnectorBase, lost_order_count_limit: int = 3) -> None:
+    def __init__(self, connector: ConnectorBase, lost_order_count_limit: int = 3) -> None:  ##@@## 默认最多可以丢失三单
         """
         Provides utilities for connectors to update in-flight orders and also handle order errors.
         Also it maintains cached orders to allow for additional updates to occur after the original order is determined to
@@ -51,6 +51,7 @@ class ClientOrderTracker:
         """
         self._connector: ConnectorBase = connector
         self._lost_order_count_limit = lost_order_count_limit
+                                                                                                                                ##@@## 三种状态 的订单列表
         self._in_flight_orders: Dict[str, InFlightOrder] = {}
         self._cached_orders: TTLCache = TTLCache(maxsize=self.MAX_CACHE_SIZE, ttl=self.CACHED_ORDER_TTL)
         self._lost_orders: Dict[str, InFlightOrder] = {}
@@ -60,14 +61,14 @@ class ClientOrderTracker:
         self._order_not_found_records: Dict[str, int] = defaultdict(lambda: 0)
 
     @property
-    def active_orders(self) -> Dict[str, InFlightOrder]:
+    def active_orders(self) -> Dict[str, InFlightOrder]:            ##@@## _in_flight_orders, 正在被tracked的order
         """
         Returns orders that are actively tracked
         """
         return self._in_flight_orders
 
     @property
-    def cached_orders(self) -> Dict[str, InFlightOrder]:
+    def cached_orders(self) -> Dict[str, InFlightOrder]:            ##@@## _cached_orders, 没有被 tracked的order
         """
         Returns orders that are no longer actively tracked.
         """
@@ -81,7 +82,7 @@ class ClientOrderTracker:
         return {**self.active_orders, **self.cached_orders}
 
     @property
-    def all_fillable_orders(self) -> Dict[str, InFlightOrder]:
+    def all_fillable_orders(self) -> Dict[str, InFlightOrder]:          ##@@## 返回所有还没有被filled的订单
         """
         Returns all orders that could still be impacted by trades: active orders, cached orders and lost orders
         """
@@ -108,10 +109,10 @@ class ClientOrderTracker:
         """
         return {client_order_id: order for client_order_id, order in self._lost_orders.items()}
 
-    def start_tracking_order(self, order: InFlightOrder):
+    def start_tracking_order(self, order: InFlightOrder):               ##@@##
         self._in_flight_orders[order.client_order_id] = order
 
-    def stop_tracking_order(self, client_order_id: str):
+    def stop_tracking_order(self, client_order_id: str):                ##@@## stop track ，将订单从 _in_flight_orders  移到 _cached_orders
         if client_order_id in self._in_flight_orders:
             self._cached_orders[client_order_id] = self._in_flight_orders[client_order_id]
             del self._in_flight_orders[client_order_id]
@@ -137,7 +138,7 @@ class ClientOrderTracker:
     ) -> Optional[InFlightOrder]:
         found_order = None
 
-        if client_order_id in self.all_orders:
+        if client_order_id in self.all_orders:              ##@@## 
             found_order = self.all_orders[client_order_id]
         elif exchange_order_id is not None:
             found_order = next(
@@ -195,12 +196,12 @@ class ClientOrderTracker:
                     del self._cached_orders[client_order_id]
                     self._lost_orders[tracked_order.client_order_id] = tracked_order
 
-    async def _process_order_update(self, order_update: OrderUpdate):
+    async def _process_order_update(self, order_update: OrderUpdate):                 ##@@## 基于order_update.client_order_id, order_update.exchange_order_id 找到 InFlightOrder 后，更新订单状态为 order_update.new_state
         if not order_update.client_order_id and not order_update.exchange_order_id:
             self.logger().error("OrderUpdate does not contain any client_order_id or exchange_order_id", exc_info=True)
             return
 
-        tracked_order: Optional[InFlightOrder] = self.fetch_order(
+        tracked_order: Optional[InFlightOrder] = self.fetch_order(                  ##@@## 从 all_orders 表中根据 client_order_id / exchange_order_id 找到 InFlightOrder 对象
             order_update.client_order_id, order_update.exchange_order_id
         )
 

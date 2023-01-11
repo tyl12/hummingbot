@@ -54,7 +54,7 @@ cdef class ConnectorBase(NetworkIterator):
 
         self._account_balances = {}  # Dict[asset_name:str, Decimal]
         self._account_available_balances = {}  # Dict[asset_name:str, Decimal]
-        # _real_time_balance_update is used to flag whether the connector provides real time balance updates.
+        # _real_time_balance_update is used to flag whether the connector provides real time balance updates.           ##@@## !!!!!
         # if not, the available will be calculated based on what happened since snapshot taken.
         self._real_time_balance_update = True
         # If _real_time_balance_update is set to False, Sub classes of this connector class need to set values
@@ -325,7 +325,7 @@ cdef class ConnectorBase(NetworkIterator):
         limit = max(limit, s_decimal_0)
         return min(available_balance, limit)
 
-    def apply_balance_update_since_snapshot(self, currency: str, available_balance: Decimal) -> Decimal:
+    def apply_balance_update_since_snapshot(self, currency: str, available_balance: Decimal) -> Decimal:                ##@@## ？？？？？
         """
         Applies available balance update as followings
         :param currency: the token symbol
@@ -333,7 +333,7 @@ cdef class ConnectorBase(NetworkIterator):
         _update_balances()
         :returns the real available that accounts for changes in flight orders and filled orders
         """
-        snapshot_bal = self.in_flight_asset_balances(self._in_flight_orders_snapshot).get(currency, s_decimal_0)
+        snapshot_bal = self.in_flight_asset_balances(self._in_flight_orders_snapshot).get(currency, s_decimal_0)  ##@@## exchange_py_base.py 中
         in_flight_bal = self.in_flight_asset_balances(self.in_flight_orders).get(currency, s_decimal_0)
         orders_filled_bal = self.order_filled_balances(self._in_flight_orders_snapshot_timestamp).get(currency,
                                                                                                       s_decimal_0)

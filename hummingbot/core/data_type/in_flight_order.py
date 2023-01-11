@@ -96,7 +96,7 @@ class InFlightOrder:
             creation_timestamp: float,
             price: Optional[Decimal] = None,
             exchange_order_id: Optional[str] = None,
-            initial_state: OrderState = OrderState.PENDING_CREATE,
+            initial_state: OrderState = OrderState.PENDING_CREATE,              ##@@## 初始状态是 PENDING_CREATE
             leverage: int = 1,
             position: PositionAction = PositionAction.NIL,
     ) -> None:
@@ -313,7 +313,7 @@ class InFlightOrder:
         return: True if the order gets updated otherwise False
         """
         if (order_update.client_order_id != self.client_order_id
-                and order_update.exchange_order_id != self.exchange_order_id):
+                and order_update.exchange_order_id != self.exchange_order_id):                  ##@@## client_order_id / exchange_order_id 有一个匹配即可
             return False
 
         prev_data = (self.exchange_order_id, self.current_state)
@@ -323,14 +323,14 @@ class InFlightOrder:
 
         self.current_state = order_update.new_state
 
-        updated: bool = prev_data != (self.exchange_order_id, self.current_state)
+        updated: bool = prev_data != (self.exchange_order_id, self.current_state)       ## 状态是否有变化，如果有，更新时间戳
 
         if updated:
             self.last_update_timestamp = order_update.update_timestamp
 
         return updated
 
-    def update_with_trade_update(self, trade_update: TradeUpdate) -> bool:
+    def update_with_trade_update(self, trade_update: TradeUpdate) -> bool:          ##@@## ?????
         """
         Updates the in flight order with a trade update (from REST API or WS API)
         :return: True if the order gets updated otherwise False
@@ -342,7 +342,7 @@ class InFlightOrder:
                     and self.exchange_order_id != trade_update.exchange_order_id)):
             return False
 
-        self.order_fills[trade_id] = trade_update
+        self.order_fills[trade_id] = trade_update  ##@@## sub trade for an order
 
         self.executed_amount_base += trade_update.fill_base_amount
         self.executed_amount_quote += trade_update.fill_quote_amount

@@ -82,7 +82,7 @@ class ExchangePyBase(ExchangeBase, ABC):
         self._user_stream_tracker = UserStreamTracker(
             data_source=self._userstream_ds)
 
-        self._order_tracker: ClientOrderTracker = ClientOrderTracker(connector=self)
+        self._order_tracker: ClientOrderTracker = ClientOrderTracker(connector=self)  ##@@## 默认的 lost order limit 为3 ，即ordertrack最多可以丢失 3 单
 
     @classmethod
     def logger(cls) -> HummingbotLogger:
@@ -306,7 +306,7 @@ class ExchangePyBase(ExchangeBase, ABC):
 
         :return: the id assigned by the connector to the order (the client id)
         """
-        order_id = get_new_client_order_id(
+        order_id = get_new_client_order_id(                 ##@@## local generated order id
             is_buy=True,
             trading_pair=trading_pair,
             hbot_order_id_prefix=self.client_order_id_prefix,
@@ -336,7 +336,7 @@ class ExchangePyBase(ExchangeBase, ABC):
         :param price: the order price
         :return: the id assigned by the connector to the order (the client id)
         """
-        order_id = get_new_client_order_id(
+        order_id = get_new_client_order_id(                 ##@@## client order id
             is_buy=False,
             trading_pair=trading_pair,
             hbot_order_id_prefix=self.client_order_id_prefix,
@@ -423,7 +423,7 @@ class ExchangePyBase(ExchangeBase, ABC):
 
     async def _create_order(self,
                             trade_type: TradeType,
-                            order_id: str,
+                            order_id: str,              ## local generated client order id
                             trading_pair: str,
                             amount: Decimal,
                             order_type: OrderType,
@@ -440,7 +440,7 @@ class ExchangePyBase(ExchangeBase, ABC):
         :param price: the order price
         """
         exchange_order_id = ""
-        trading_rule = self._trading_rules[trading_pair]
+        trading_rule = self._trading_rules[trading_pair]        ## trading_rule 定义了一些trading的规范，譬如 min_order_size， min_notional_size
 
         if order_type in [OrderType.LIMIT, OrderType.LIMIT_MAKER]:
             price = self.quantize_order_price(trading_pair, price)
@@ -449,8 +449,8 @@ class ExchangePyBase(ExchangeBase, ABC):
         else:
             amount = self.quantize_order_amount(trading_pair=trading_pair, amount=amount)
 
-        self.start_tracking_order(
-            order_id=order_id,
+        self.start_tracking_order(                  ##@@## 构建 InFlightOrder 对象，存入 client_order_tracker.py:: _in_flight_orders map 表
+            order_id=order_id,                      ## local generated client order id
             exchange_order_id=None,
             trading_pair=trading_pair,
             order_type=order_type,
@@ -570,7 +570,7 @@ class ExchangePyBase(ExchangeBase, ABC):
         self._order_tracker.restore_tracking_states(tracking_states=saved_states)
 
     def start_tracking_order(self,
-                             order_id: str,
+                             order_id: str,                          ##@@##  local generated client order id
                              exchange_order_id: Optional[str],
                              trading_pair: str,
                              trade_type: TradeType,
@@ -589,9 +589,9 @@ class ExchangePyBase(ExchangeBase, ABC):
         :param amount: the amount for the order
         :param order_type: type of execution for the order (MARKET, LIMIT, LIMIT_MAKER)
         """
-        self._order_tracker.start_tracking_order(
+        self._order_tracker.start_tracking_order(               ##@@## 构建 InFlightOrder 对象，存入 client_order_tracker.py:: _in_flight_orders map 表
             InFlightOrder(
-                client_order_id=order_id,
+                client_order_id=order_id,                        ##@@##
                 exchange_order_id=exchange_order_id,
                 trading_pair=trading_pair,
                 order_type=order_type,
@@ -599,7 +599,7 @@ class ExchangePyBase(ExchangeBase, ABC):
                 amount=amount,
                 price=price,
                 creation_timestamp=self.current_timestamp
-            )
+            )                                                       ##@@## 初始状态是 PENDING_CREATE
         )
 
     def stop_tracking_order(self, order_id: str):
@@ -611,7 +611,7 @@ class ExchangePyBase(ExchangeBase, ABC):
         self._order_tracker.stop_tracking_order(client_order_id=order_id)
 
     async def _sleep(self, delay: float):
-        await asyncio.sleep(delay)
+        await asyncio.sleep(delay) ## milliseconds
 
     # === Implementation-specific methods ===
 
@@ -661,9 +661,9 @@ class ExchangePyBase(ExchangeBase, ABC):
         self._trading_rules_polling_task = safe_ensure_future(self._trading_rules_polling_loop())
         self._trading_fees_polling_task = safe_ensure_future(self._trading_fees_polling_loop())
         if self.is_trading_required:
-            self._status_polling_task = safe_ensure_future(self._status_polling_loop())
+            self._status_polling_task = safe_ensure_future(self._status_polling_loop())         ##@@## 11
             self._user_stream_tracker_task = safe_ensure_future(self._user_stream_tracker.start())
-            self._user_stream_event_listener_task = safe_ensure_future(self._user_stream_event_listener())
+            self._user_stream_event_listener_task = safe_ensure_future(self._user_stream_event_listener())  ##@@## 22
             self._lost_orders_update_task = safe_ensure_future(self._lost_orders_update_polling_loop())
 
     async def stop_network(self):
@@ -753,7 +753,7 @@ class ExchangePyBase(ExchangeBase, ABC):
                                     " Check network connection.")
                 await self._sleep(0.5)
 
-    async def _status_polling_loop(self):
+    async def _status_polling_loop(self):  ##@@## loop with 0.5 ms sleep
         """
         Performs all required operation to keep the connector updated and synchronized with the exchange.
         It contains the backup logic to update status using API requests in case the main update source
@@ -768,7 +768,7 @@ class ExchangePyBase(ExchangeBase, ABC):
                 await self._update_time_synchronizer()
 
                 # the following method is implementation-specific
-                await self._status_polling_loop_fetch_updates()
+                await self._status_polling_loop_fetch_updates()         ##@@##
 
                 self._last_poll_timestamp = self.current_timestamp
                 self._poll_notifier = asyncio.Event()
@@ -782,7 +782,7 @@ class ExchangePyBase(ExchangeBase, ABC):
                     exc_info=True,
                     app_warning_msg=f"Could not fetch account updates from {self.name_cap}. "
                                     "Check API key and network connection.")
-                await self._sleep(0.5)
+                await self._sleep(0.5) 
 
     async def _update_time_synchronizer(self, pass_on_non_cancelled_error: bool = False):
         try:
@@ -902,33 +902,33 @@ class ExchangePyBase(ExchangeBase, ABC):
         """
         await safe_gather(
             self._update_all_balances(),
-            self._update_order_status(),
+            self._update_order_status(),        ##@@##
         )
 
     async def _update_all_balances(self):
-        await self._update_balances()
-        if not self.real_time_balance_update:
+        await self._update_balances()  ##@@## http查询account 信息，更新 各asset balance
+        if not self.real_time_balance_update:               ##@@## ！！！！！ 如果没有提供 ws 的 balance update 接口
             # This is only required for exchanges that do not provide balance update notifications through websocket
             self._in_flight_orders_snapshot = {k: copy.copy(v) for k, v in self.in_flight_orders.items()}
             self._in_flight_orders_snapshot_timestamp = self.current_timestamp
 
-    async def _update_orders_fills(self, orders: List[InFlightOrder]):
+    async def _update_orders_fills(self, orders: List[InFlightOrder]):                  ##@@## 1; 遍历指定订单列表，基于 order.exchange_order_id，通过http接口查询订单的fill情况，并调用process_trade_update() 更新订单状态
         for order in orders:
             try:
                 trade_updates = await self._all_trade_updates_for_order(order=order)
                 for trade_update in trade_updates:
-                    self._order_tracker.process_trade_update(trade_update)
+                    self._order_tracker.process_trade_update(trade_update)   ##@@## 会触发 order_filled event
             except asyncio.CancelledError:
                 raise
             except Exception as request_error:
                 self.logger().warning(
                     f"Failed to fetch trade updates for order {order.client_order_id}. Error: {request_error}")
 
-    async def _update_orders(self):
+    async def _update_orders(self):                                      ##@@## 2
         orders_to_update = self.in_flight_orders.copy()
         for client_order_id, order in orders_to_update.items():
             try:
-                order_update = await self._request_order_status(tracked_order=order)
+                order_update = await self._request_order_status(tracked_order=order)        ## 调用 "order"接口获取订单状态
                 if client_order_id in self.in_flight_orders:
                     self._order_tracker.process_order_update(order_update)
             except asyncio.CancelledError:
@@ -959,9 +959,9 @@ class ExchangePyBase(ExchangeBase, ABC):
                 self.logger().warning(
                     f"Error fetching status update for lost order {order.client_order_id}: {request_error}.")
 
-    async def _update_order_status(self):
-        await self._update_orders_fills(orders=list(self._order_tracker.all_fillable_orders.values()))
-        await self._update_orders()
+    async def _update_order_status(self):               ##@@##
+        await self._update_orders_fills(orders=list(self._order_tracker.all_fillable_orders.values()))      ##@@## => 1，   {**self.active_orders, **self.cached_orders, **self.lost_orders}
+        await self._update_orders()                                                                         ##@@## => 2     active_orders
 
     async def _update_lost_orders_status(self):
         await self._update_orders_fills(orders=list(self._order_tracker.lost_orders.values()))

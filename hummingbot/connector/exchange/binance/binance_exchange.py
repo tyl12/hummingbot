@@ -162,7 +162,7 @@ class BinanceExchange(ExchangePyBase):  ##@@##
         is_maker = order_type is OrderType.LIMIT_MAKER
         return DeductedFromReturnsTradeFee(percent=self.estimate_fee_pct(is_maker))
 
-    async def _place_order(self,
+    async def _place_order(self,            
                            order_id: str,
                            trading_pair: str,
                            amount: Decimal,
@@ -180,7 +180,7 @@ class BinanceExchange(ExchangePyBase):  ##@@##
                       "side": side_str,
                       "quantity": amount_str,
                       "type": type_str,
-                      "newClientOrderId": order_id,
+                      "newClientOrderId": order_id,         ##@@## local generated client order id
                       "price": price_str}
         if order_type == OrderType.LIMIT:
             api_params["timeInForce"] = CONSTANTS.TIME_IN_FORCE_GTC
@@ -269,7 +269,7 @@ class BinanceExchange(ExchangePyBase):  ##@@##
         """
         pass
 
-    async def _user_stream_event_listener(self):
+    async def _user_stream_event_listener(self):                    ##@@##  balance updates, order updates and trade events.
         """
         This functions runs in background continuously processing the events received from the exchange by the user
         stream data source. It keeps reading events from the queue until the task is interrupted.
@@ -280,7 +280,7 @@ class BinanceExchange(ExchangePyBase):  ##@@##
                 event_type = event_message.get("e")
                 # Refer to https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md
                 # As per the order update section in Binance the ID of the order being canceled is under the "C" key
-                if event_type == "executionReport":
+                if event_type == "executionReport":     ## order update,  https://binance-docs.github.io/apidocs/spot/en/#payload-order-update
                     execution_type = event_message.get("x")
                     if execution_type != "CANCELED":
                         client_order_id = event_message.get("c")
@@ -297,9 +297,9 @@ class BinanceExchange(ExchangePyBase):  ##@@##
                                 flat_fees=[TokenAmount(amount=Decimal(event_message["n"]), token=event_message["N"])]
                             )
                             trade_update = TradeUpdate(
-                                trade_id=str(event_message["t"]),
+                                trade_id=str(event_message["t"]),       ##@@##
                                 client_order_id=client_order_id,
-                                exchange_order_id=str(event_message["i"]),
+                                exchange_order_id=str(event_message["i"]),  ##@@##
                                 trading_pair=tracked_order.trading_pair,
                                 fee=fee,
                                 fill_base_amount=Decimal(event_message["l"]),
@@ -309,7 +309,7 @@ class BinanceExchange(ExchangePyBase):  ##@@##
                             )
                             self._order_tracker.process_trade_update(trade_update)
 
-                    tracked_order = self._order_tracker.all_updatable_orders.get(client_order_id)
+                    tracked_order = self._order_tracker.all_updatable_orders.get(client_order_id) ## update other status: CANCELED, REPLACED, REJECTED, EXPIRED
                     if tracked_order is not None:
                         order_update = OrderUpdate(
                             trading_pair=tracked_order.trading_pair,
@@ -320,14 +320,14 @@ class BinanceExchange(ExchangePyBase):  ##@@##
                         )
                         self._order_tracker.process_order_update(order_update=order_update)
 
-                elif event_type == "outboundAccountPosition":
+                elif event_type == "outboundAccountPosition":  ## outboundAccountPosition is sent any time an account's balance changes and contains the assets that could have changed by the event that generated the balance change (a deposit, withdrawal, trade, order placement, or cancelation).
                     balances = event_message["B"]
                     for balance_entry in balances:
                         asset_name = balance_entry["a"]
                         free_balance = Decimal(balance_entry["f"])
                         total_balance = Decimal(balance_entry["f"]) + Decimal(balance_entry["l"])
                         self._account_available_balances[asset_name] = free_balance
-                        self._account_balances[asset_name] = total_balance
+                        self._account_balances[asset_name] = total_balance  ##@@##
 
             except asyncio.CancelledError:
                 raise
@@ -432,14 +432,14 @@ class BinanceExchange(ExchangePyBase):  ##@@##
                             ))
                         self.logger().info(f"Recreating missing trade in TradeFill: {trade}")
 
-    async def _all_trade_updates_for_order(self, order: InFlightOrder) -> List[TradeUpdate]:
+    async def _all_trade_updates_for_order(self, order: InFlightOrder) -> List[TradeUpdate]:        ##@@## callled by exchange_py_base.py, 基于 order.exchange_order_id，通过http接口查询订单的fill情况
         trade_updates = []
 
-        if order.exchange_order_id is not None:
+        if order.exchange_order_id is not None:                     ##@@## exchange_order_id 必须有效 ！！！！！
             exchange_order_id = int(order.exchange_order_id)
             trading_pair = await self.exchange_symbol_associated_to_pair(trading_pair=order.trading_pair)
             all_fills_response = await self._api_get(
-                path_url=CONSTANTS.MY_TRADES_PATH_URL,
+                path_url=CONSTANTS.MY_TRADES_PATH_URL,      ## “myTrades” 指定symbol/exchange order id 获取订单详情，如果是一个订单多次fill, 会返回所有fill的交易详情
                 params={
                     "symbol": trading_pair,
                     "orderId": exchange_order_id
@@ -448,7 +448,7 @@ class BinanceExchange(ExchangePyBase):  ##@@##
                 limit_id=CONSTANTS.MY_TRADES_PATH_URL)
 
             for trade in all_fills_response:
-                exchange_order_id = str(trade["orderId"])
+                exchange_order_id = str(trade["orderId"])       ##@@## ？？ 是否同请求中的 orderId 一致？
                 fee = TradeFeeBase.new_spot_fee(
                     fee_schema=self.trade_fee_schema(),
                     trade_type=order.trade_type,
@@ -470,13 +470,13 @@ class BinanceExchange(ExchangePyBase):  ##@@##
 
         return trade_updates
 
-    async def _request_order_status(self, tracked_order: InFlightOrder) -> OrderUpdate:
+    async def _request_order_status(self, tracked_order: InFlightOrder) -> OrderUpdate:     ##@@## http 查询订单状态，构造 order_update 对象，用于更新本地状态记录
         trading_pair = await self.exchange_symbol_associated_to_pair(trading_pair=tracked_order.trading_pair)
         updated_order_data = await self._api_get(
-            path_url=CONSTANTS.ORDER_PATH_URL,
+            path_url=CONSTANTS.ORDER_PATH_URL,      ##@@## "order" , 通过http接口查询order状态， 需要指定 orderId 或者 origClientOrderId
             params={
                 "symbol": trading_pair,
-                "origClientOrderId": tracked_order.client_order_id},
+                "origClientOrderId": tracked_order.client_order_id},       ##@@## !!!!!    client_order_id
             is_auth_required=True)
 
         new_state = CONSTANTS.ORDER_STATE[updated_order_data["status"]]
@@ -496,7 +496,7 @@ class BinanceExchange(ExchangePyBase):  ##@@##
         remote_asset_names = set()
 
         account_info = await self._api_get(
-            path_url=CONSTANTS.ACCOUNTS_PATH_URL,
+            path_url=CONSTANTS.ACCOUNTS_PATH_URL,       ##@@## 通过 http 接口获取 account 信息
             is_auth_required=True)
 
         balances = account_info["balances"]
@@ -505,7 +505,7 @@ class BinanceExchange(ExchangePyBase):  ##@@##
             free_balance = Decimal(balance_entry["free"])
             total_balance = Decimal(balance_entry["free"]) + Decimal(balance_entry["locked"])
             self._account_available_balances[asset_name] = free_balance
-            self._account_balances[asset_name] = total_balance
+            self._account_balances[asset_name] = total_balance  ##@@##
             remote_asset_names.add(asset_name)
 
         asset_names_to_remove = local_asset_names.difference(remote_asset_names)
