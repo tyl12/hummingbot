@@ -145,7 +145,7 @@ cdef class OrderTracker(TimeIterator):
     def get_shadow_limit_orders(self) -> Dict[MarketTradingPairTuple, Dict[str, LimitOrder]]:
         return self.c_get_shadow_limit_orders()
 
-    cdef bint c_has_in_flight_cancel(self, str order_id):
+    cdef bint c_has_in_flight_cancel(self, str order_id):                   ## 订单cancel还未超时
         return self._in_flight_cancels.get(order_id, NaN) + self.CANCEL_EXPIRY_DURATION > self._current_timestamp
 
     def has_in_flight_cancel(self, order_id: str):
@@ -164,16 +164,16 @@ cdef class OrderTracker(TimeIterator):
 
         # Maintain the cancel expiry time invariant.
         for k, cancel_timestamp in self._in_flight_cancels.items():
-            if cancel_timestamp < self._current_timestamp - self.CANCEL_EXPIRY_DURATION:
+            if cancel_timestamp < self._current_timestamp - self.CANCEL_EXPIRY_DURATION:    ## 清理cancel超时的订单，剩下未超时订单
                 keys_to_delete.append(k)
         for k in keys_to_delete:
             del self._in_flight_cancels[k]
 
-        if order_id in self.in_flight_cancels:
+        if order_id in self.in_flight_cancels:                               ## cancel 没有超时，返回false
             return False
 
         # Track the cancel.
-        self._in_flight_cancels[order_id] = self._current_timestamp
+        self._in_flight_cancels[order_id] = self._current_timestamp         ## cancel 超时，上面del后，此处会重新设置时间戳， 返回true
         return True
 
     def check_and_track_cancel(self, order_id: str) -> bool:
@@ -229,7 +229,7 @@ cdef class OrderTracker(TimeIterator):
                                                 quantity,
                                                 creation_timestamp=int(self._current_timestamp * 1e6))
         self._tracked_limit_orders[market_pair][order_id] = limit_order                                     ##@@##  c_start_tracking_limit_order 时会记录下当前order的信息 到 _tracked_limit_orders
-        self._shadow_tracked_limit_orders[market_pair][order_id] = limit_order
+        self._shadow_tracked_limit_orders[market_pair][order_id] = limit_order          ##@@## _shadow_tracked_limit_orders ?????
         self._order_id_to_market_pair[order_id] = market_pair
         self._shadow_order_id_to_market_pair[order_id] = market_pair
 

@@ -109,7 +109,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
 
         self._last_timestamp = 0
         self._status_report_interval = status_report_interval
-        self._market_pair_tracker = OrderIDMarketPairTracker()
+        self._market_pair_tracker = OrderIDMarketPairTracker()     ## 记录 market_pair, exchange, order_id信息， 主要用于查询 order_id 对应的 market_pair信息
 
         # Holds ongoing hedging orders mapped to their respective maker fill trades
         self._ongoing_hedging = bidict()
@@ -491,10 +491,10 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
 
     def has_active_taker_order(self, market_pair: MarketTradingPairTuple):
         # Market orders are not being submitted as taker orders, limit orders are preferred at all times
-        limit_orders = self._sb_order_tracker.get_limit_orders()
+        limit_orders = self._sb_order_tracker.get_limit_orders() ## taker 总是提交 limit order
         limit_orders = limit_orders.get(market_pair, {})
         if len(limit_orders) > 0:
-            if len(set(limit_orders.keys()).intersection(set(self._taker_to_maker_order_ids.keys()))) > 0:
+            if len(set(limit_orders.keys()).intersection(set(self._taker_to_maker_order_ids.keys()))) > 0:  ## limit_order 中 存在对冲的taker单
                 return True
         return False
 
@@ -675,7 +675,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                 # Values have to be unique in a bidict
                 self._ongoing_hedging[order_filled_event.exchange_trade_id] = order_filled_event.exchange_trade_id  # _ongoing_hedging 记录了当前已经提交的对冲请求，以 exchange_trade_id 为key 
 
-                self._maker_to_hedging_trades[order_id] += [exchange_trade_id]
+                self._maker_to_hedging_trades[order_id] += [exchange_trade_id]      ## maker order id => [filled maker exchange trade id]
 
                 self.hedge_tasks_cleanup()
                 self._hedge_maker_order_task = safe_ensure_future(
@@ -704,8 +704,8 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         market_pair = self._market_pair_tracker.get_market_pair_from_order_id(order_id)
 
         if market_pair is not None:
-            if order_id in self._maker_to_taker_order_ids.keys():
-                limit_order_record = self._sb_order_tracker.get_limit_order(market_pair.maker, order_id)
+            if order_id in self._maker_to_taker_order_ids.keys():       ## maker 挂单
+                limit_order_record = self._sb_order_tracker.get_limit_order(market_pair.maker, order_id)    ## 获取限价单详情
                 self.log_with_clock(
                     logging.INFO,
                     f"({market_pair.maker.trading_pair}) Maker buy order {order_id} "
@@ -721,7 +721,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                 # it'll likey expire
                 # The others are left in the market to collect market making fees
                 # Meanwhile new maker order may be placed
-            if order_id in self._taker_to_maker_order_ids.keys():
+            if order_id in self._taker_to_maker_order_ids.keys():       ## taker 挂单
                 self.log_with_clock(
                     logging.INFO,
                     f"({market_pair.taker.trading_pair}) Taker buy order {order_id} for "
@@ -771,7 +771,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         market_pair = self._market_pair_tracker.get_market_pair_from_order_id(order_id)
 
         if market_pair is not None:
-            if order_id in self._maker_to_taker_order_ids.keys():
+            if order_id in self._maker_to_taker_order_ids.keys():       ## maker 单
                 limit_order_record = self._sb_order_tracker.get_limit_order(market_pair.maker, order_id)
                 self.log_with_clock(
                     logging.INFO,
@@ -788,7 +788,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                 # it'll likey expire
                 # The others are left in the market to collect market making fees
                 # Meanwhile new maker order may be placed
-            if order_id in self._taker_to_maker_order_ids.keys():
+            if order_id in self._taker_to_maker_order_ids.keys():       ## taker 单
                 self.log_with_clock(
                     logging.INFO,
                     f"({market_pair.taker.trading_pair}) Taker sell order {order_id} for "
@@ -799,15 +799,15 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                     f"Taker SELL order ({order_completed_event.base_asset_amount} {order_completed_event.base_asset} "
                     f"{order_completed_event.quote_asset}) is filled."
                 )
-                maker_order_id = self._taker_to_maker_order_ids[order_id]
+                maker_order_id = self._taker_to_maker_order_ids[order_id]   ## 当前 taker单对应的maker单
                 # Remove the completed taker order
                 del self._taker_to_maker_order_ids[order_id]
                 # Get all active taker order ids for the maker order id
                 active_taker_ids = set(self._taker_to_maker_order_ids.keys()).intersection(set(
-                    self._maker_to_taker_order_ids[maker_order_id]))
-                if len(active_taker_ids) == 0:
+                    self._maker_to_taker_order_ids[maker_order_id]))        # 对冲单 place_order时会记录下maker_order_id 对应的所有taker单; 此处检查当前taker单对应的原始maker单下所有的taker单是否都完成了
+                if len(active_taker_ids) == 0:  ## 完全对冲完毕，则清理数据
                     # Was maker order fully filled?
-                    maker_order_ids = list(order_id for market, limit_order, order_id in self.active_maker_limit_orders)
+                    maker_order_ids = list(order_id for market, limit_order, order_id in self.active_maker_limit_orders)  ## order tacker中记录的所有 maker 端 limit order
                     if maker_order_id not in maker_order_ids:
                         # Remove the completed fully hedged maker order
                         del self._maker_to_taker_order_ids[maker_order_id]
@@ -1792,8 +1792,8 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                                       f"failed with the following error: {str(e)}")
         if order_id is None:
             return
-        self._sb_order_tracker.add_create_order_pending(order_id)
-        self._market_pair_tracker.start_tracking_order_id(order_id, market_info.market, market_pair)
+        self._sb_order_tracker.add_create_order_pending(order_id)       ## place order时添加到记录，did_create_buy/sell_order()回调中，会清理记录; 从而记录中保持着向exchange提交的还未确认的订单
+        self._market_pair_tracker.start_tracking_order_id(order_id, market_info.market, market_pair)  ## 记录 market_pair, exchange, order_id信息
         if is_maker:  ##@@## 如果是maker， 则初始化 _maker_to_taker_order_ids 
             self._maker_to_taker_order_ids[order_id] = []
         else:   ## 对冲的 taker 单
