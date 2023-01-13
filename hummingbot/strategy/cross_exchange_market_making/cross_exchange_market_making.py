@@ -93,7 +93,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         :param hb_app_notification:
         """
         self._config_map = config_map
-        self._market_pairs = {
+        self._market_pairs = {      ##@@## 记录所有 （maker exchange , market_pair)   信息; market_pair 包含 （maker, maker pair; taker, taker pair） 一对信息
             (market_pair.maker.market, market_pair.maker.trading_pair): market_pair
             for market_pair in market_pairs
         }
@@ -136,7 +136,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
 
         all_markets = list(self._maker_markets | self._taker_markets)
 
-        self.add_markets(all_markets)
+        self.add_markets(all_markets)       ##@@## strategy_base中会将需要的market添加到 _sb_markets 中，并设置所有market的监听回调
 
     @property
     def order_amount(self):
@@ -443,7 +443,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                     market_pair_to_active_orders[market_pair].append(limit_order)
 
             # Process each market pair independently.
-            for market_pair in self._market_pairs.values():  ##@@##
+            for market_pair in self._market_pairs.values():  ##@@## 遍历所有 (maker market, maker pair) 对 列表
                 print("##@@## call process_market_pair: ", market_pair)
                 await self.process_market_pair(timestamp, market_pair, market_pair_to_active_orders[market_pair])  ##@@##　!!!!!
 
@@ -1775,7 +1775,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         expiration_seconds = self._config_map.order_refresh_mode.get_expiration_seconds()  ##@@## ??? 配置流程
         order_id = None
         if is_buy:
-            try:
+            try:                                                                        ## strategy_base:: buy_with_specific_market() 内部会调用 self._sb_order_tracker.c_start_tracking_limit_order() 记录订单状态
                 order_id = self.buy_with_specific_market(market_info, amount,           ## => exchnage_py_base.py::buy()/_create_order() => binance_exchange.py:: _place_order()
                                                          order_type=order_type, price=price,
                                                          expiration_seconds=expiration_seconds) ##@@## 调用基类函数进行下单操作，同时，基类内部会进行order tracker; 下单返回 order_id

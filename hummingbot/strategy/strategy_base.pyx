@@ -143,7 +143,7 @@ cdef class StrategyBase(TimeIterator): ##@@##
         self._sb_markets = set()
         self._sb_create_buy_order_listener = BuyOrderCreatedListener(self)  ##@@## 跟进 orderlistener的处理逻辑
         self._sb_create_sell_order_listener = SellOrderCreatedListener(self)  ##@@## 
-        self._sb_fill_order_listener = OrderFilledListener(self) ##@@##
+        self._sb_fill_order_listener = OrderFilledListener(self) ##@@## 所有的回调，都会最终调用到 具体strategy中的实现函数中
         self._sb_fail_order_listener = OrderFailedListener(self)
         self._sb_cancel_order_listener = OrderCancelledListener(self)
         self._sb_expire_order_listener = OrderExpiredListener(self)
@@ -172,7 +172,7 @@ cdef class StrategyBase(TimeIterator): ##@@##
         raise NotImplementedError
 
     @property
-    def active_markets(self) -> List[ConnectorBase]:
+    def active_markets(self) -> List[ConnectorBase]:        ##@@##
         return list(self._sb_markets)
 
     @property
@@ -312,7 +312,7 @@ cdef class StrategyBase(TimeIterator): ##@@##
         self._sb_order_tracker.c_stop(clock)
         self.c_remove_markets(list(self._sb_markets))
 
-    cdef c_add_markets(self, list markets):
+    cdef c_add_markets(self, list markets):     ##@@## 将market添加到监听列表中
         cdef:
             ConnectorBase typed_market
 
@@ -335,9 +335,9 @@ cdef class StrategyBase(TimeIterator): ##@@##
             typed_market.c_add_listener(self.RANGE_POSITION_UPDATE_FAILURE_EVENT_TAG, self._sb_range_position_update_failure_listener)
             typed_market.c_add_listener(self.RANGE_POSITION_FEE_COLLECTED_EVENT_TAG, self._sb_range_position_fee_collected_listener)
             typed_market.c_add_listener(self.RANGE_POSITION_CLOSED_EVENT_TAG, self._sb_range_position_closed_listener)
-            self._sb_markets.add(typed_market)
+            self._sb_markets.add(typed_market)  ##@@##
 
-    def add_markets(self, markets: List[ConnectorBase]):
+    def add_markets(self, markets: List[ConnectorBase]):    ##@@## 派生类strategy中初始化时需要调用
         self.c_add_markets(markets)
 
     cdef c_remove_markets(self, list markets):

@@ -42,10 +42,17 @@ def start(self):
     self._initialize_markets(market_names)
     maker_data = [self.markets[maker_market], maker_trading_pair] + list(maker_assets)
     taker_data = [self.markets[taker_market], taker_trading_pair] + list(taker_assets)
-    maker_market_trading_pair_tuple = MarketTradingPairTuple(*maker_data)
-    taker_market_trading_pair_tuple = MarketTradingPairTuple(*taker_data)
-    self.market_trading_pair_tuples = [maker_market_trading_pair_tuple, taker_market_trading_pair_tuple]
-    self.market_pair = MakerTakerMarketPair(maker=maker_market_trading_pair_tuple, taker=taker_market_trading_pair_tuple)
+    
+    # maker_market_trading_pair_tuple = MarketTradingPairTuple(*maker_data)
+    # taker_market_trading_pair_tuple = MarketTradingPairTuple(*taker_data)
+    # self.market_trading_pair_tuples = [maker_market_trading_pair_tuple, taker_market_trading_pair_tuple]
+    # self.market_pair = MakerTakerMarketPair(maker=maker_market_trading_pair_tuple, taker=taker_market_trading_pair_tuple)
+    # self.market_pair2 = MakerTakerMarketPair(maker=MarketTradingPairTuple(binance, "ETH/USDT", "ETH", "USDT"), taker=MarketTradingPairTuple())
+    
+    self.market_pair = MakerTakerMarketPair(maker=MarketTradingPairTuple(binance_paper_trade, "ETH-USDT", "ETH", "USDT"), taker=MarketTradingPairTuple(pancakeswap_binance-smart-chain_testnet, "ETH-USDT", "ETH", "USDT"))
+    self.market_pair2 = MakerTakerMarketPair(maker=MarketTradingPairTuple(binance_paper_trade, "BNB-USDT", "BNB", "USDT"), taker=MarketTradingPairTuple(pancakeswap_binance-smart-chain_testnet, "WBNB-USDT", "WBNB", "USDT"))
+
+
 
     if taker_market in AllConnectorSettings.get_gateway_amm_connector_names():
         if debug_price_shim:
@@ -70,7 +77,7 @@ def start(self):
     self.strategy = CrossExchangeMarketMakingStrategy()
     self.strategy.init_params(
         config_map=c_map,
-        market_pairs=[self.market_pair],
+        market_pairs=[self.market_pair, self.market_pair2],
         status_report_interval=status_report_interval,
         logging_options=strategy_logging_options,
         hb_app_notification=True,
