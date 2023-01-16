@@ -192,7 +192,7 @@ cdef class OrderTracker(TimeIterator):
         return self.c_get_shadow_market_pair_from_order_id(order_id)
 
     cdef LimitOrder c_get_limit_order(self, object market_pair, str order_id):
-        return self._tracked_limit_orders.get(market_pair, {}).get(order_id)
+        return self._tracked_limit_orders.get(market_pair, {}).get(order_id)        ##@@##
 
     def get_limit_order(self, market_pair, order_id: str) -> LimitOrder:
         return self.c_get_limit_order(market_pair, order_id)
