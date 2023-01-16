@@ -69,7 +69,7 @@ class MarketsRecorder:
             exchange_order_ids = self.get_orders_for_config_and_market(self._config_file_path, market, True, 2000)
             market.add_exchange_order_ids_from_market_recorder({o.exchange_order_id: o.id for o in exchange_order_ids})
 
-        self._create_order_forwarder: SourceInfoEventForwarder = SourceInfoEventForwarder(self._did_create_order)
+        self._create_order_forwarder: SourceInfoEventForwarder = SourceInfoEventForwarder(self._did_create_order)   ##@@##
         self._fill_order_forwarder: SourceInfoEventForwarder = SourceInfoEventForwarder(self._did_fill_order)
         self._cancel_order_forwarder: SourceInfoEventForwarder = SourceInfoEventForwarder(self._did_cancel_order)
         self._fail_order_forwarder: SourceInfoEventForwarder = SourceInfoEventForwarder(self._did_fail_order)
@@ -117,7 +117,7 @@ class MarketsRecorder:
     def start(self):
         for market in self._markets:
             for event_pair in self._event_pairs:
-                market.add_listener(event_pair[0], event_pair[1])
+                market.add_listener(event_pair[0], event_pair[1])   ##@@## 注册事件处理函数，监听 order状态变化等event
 
     def stop(self):
         for market in self._markets:
@@ -214,13 +214,13 @@ class MarketsRecorder:
                                             last_status=event_type.name,
                                             last_update_timestamp=timestamp,
                                             exchange_order_id=evt.exchange_order_id)
-                order_status: OrderStatus = OrderStatus(order=order_record,
+                order_status: OrderStatus = OrderStatus(order=order_record,                
                                                         timestamp=timestamp,
                                                         status=event_type.name)
                 session.add(order_record)
                 session.add(order_status)
                 market.add_exchange_order_ids_from_market_recorder({evt.exchange_order_id: evt.order_id})
-                self.save_market_states(self._config_file_path, market, session=session)
+                self.save_market_states(self._config_file_path, market, session=session)                       ##@@## save to db.
 
     def _did_fill_order(self,
                         event_tag: int,

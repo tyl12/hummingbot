@@ -161,12 +161,12 @@ class ClientOrderTracker:
             updated: bool = tracked_order.update_with_trade_update(trade_update)
             if updated:
                 self._trigger_order_fills(
-                    tracked_order=tracked_order,
+                    tracked_order=tracked_order,        ##@@## exchange 內部 order_id
                     prev_executed_amount_base=previous_executed_amount_base,
                     fill_amount=trade_update.fill_base_amount,
                     fill_price=trade_update.fill_price,
                     fill_fee=trade_update.fee,
-                    trade_id=trade_update.trade_id)
+                    trade_id=trade_update.trade_id)     ##@@## order partial filled trade id
 
     async def process_order_not_found(self, client_order_id: str):
         """
