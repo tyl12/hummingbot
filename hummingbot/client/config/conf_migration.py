@@ -32,7 +32,7 @@ from hummingbot.strategy.avellaneda_market_making.avellaneda_market_making_confi
     AvellanedaMarketMakingConfigMap,
 )
 from hummingbot.strategy.cross_exchange_market_making.cross_exchange_market_making_config_map_pydantic import (
-    CrossExchangeMarketMakingConfigMap,
+    CrossExchangeMarketMakingConfigMap,     ##@@##
 )
 
 encrypted_conf_prefix = "encrypted_"
@@ -42,13 +42,13 @@ strategies_conf_dir_path = STRATEGIES_CONF_DIR_PATH
 celo_address = None
 
 
-def migrate_configs(secrets_manager: BaseSecretsManager) -> List[str]:
+def migrate_configs(secrets_manager: BaseSecretsManager) -> List[str]:  ##@@##
     logging.getLogger().info("Starting conf migration.")
     errors = backup_existing_dir()
     if len(errors) == 0:
         errors = migrate_global_config()
         if len(errors) == 0:
-            errors.extend(migrate_strategy_confs_paths())
+            errors.extend(migrate_strategy_confs_paths())                ##@@##
             errors.extend(migrate_connector_confs(secrets_manager))
             store_password_verification(secrets_manager)
             logging.getLogger().info("\nConf migration done.")
@@ -244,7 +244,7 @@ def _migrate_global_config_field(
 def migrate_strategy_confs_paths():
     errors = []
     logging.getLogger().info("\nMigrating strategies...")
-    for child in conf_dir_path.iterdir():
+    for child in conf_dir_path.iterdir():        ##@@## 遍历  rootdir/conf/目录 ， 将其中 xxxx.yml 文件 写入  rootdir/conf/strategies/xxxx.yml
         if child.is_file() and child.name.endswith(".yml"):
             with open(str(child), "r") as f:
                 conf = yaml.safe_load(f)
@@ -254,7 +254,7 @@ def migrate_strategy_confs_paths():
                 if conf["strategy"] == "avellaneda_market_making":
                     errors.extend(migrate_amm_confs(conf, new_path))
                 elif conf["strategy"] == "cross_exchange_market_making":
-                    errors.extend(migrate_xemm_confs(conf, new_path))
+                    errors.extend(migrate_xemm_confs(conf, new_path))                     ##@@##
                 logging.getLogger().info(f"Migrated conf for {conf['strategy']}")
     return errors
 
@@ -305,7 +305,7 @@ def migrate_amm_confs(conf, new_path) -> List[str]:
     return errors
 
 
-def migrate_xemm_confs(conf, new_path) -> List[str]:
+def migrate_xemm_confs(conf, new_path) -> List[str]:            ##@@##   new_path: rootdir/config/strategies/
     if "active_order_canceling" in conf:
         if conf["active_order_canceling"]:
             conf["order_refresh_mode"] = {}

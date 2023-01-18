@@ -1161,7 +1161,7 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
 
         self._filled_sells_balance += 1
         self._last_own_trade_price = limit_order_record.price
-
+active_orders
         self.log_with_clock(
             logging.INFO,
             f"({self.trading_pair}) Maker sell order {order_id} "

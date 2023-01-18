@@ -40,7 +40,7 @@ class CreateCommand:
         safe_ensure_future(self.prompt_for_configuration(file_name))
 
     async def prompt_for_configuration(
-        self,  # type: HummingbotApplication
+        self,  # type: HummingbotApplication                ##@@## note: the first parameter type
         file_name,
     ):
         self.app.clear_input()
@@ -53,14 +53,14 @@ class CreateCommand:
         if self.app.to_stop_config:
             return
 
-        config_map = get_strategy_config_map(strategy)
-        self.notify(f"Please see https://docs.hummingbot.io/strategies/{strategy.replace('_', '-')}/ "
+        config_map = get_strategy_config_map(strategy)                      ##@@##
+        self.notify(f"Please see https://docs.hummingbot.io/strategies/{strategy.replace('_', '-')}/ "          ##@@##
                     f"while setting up these below configuration.")
 
         if isinstance(config_map, ClientConfigAdapter):
             await self.prompt_for_model_config(config_map)
             if not self.app.to_stop_config:
-                file_name = await self.save_config_to_file(file_name, config_map)
+                file_name = await self.save_config_to_file(file_name, config_map)  ##@@## save config to file
         elif config_map is not None:
             file_name = await self.prompt_for_configuration_legacy(file_name, strategy, config_map)
         else:
@@ -72,14 +72,14 @@ class CreateCommand:
         save_previous_strategy_value(file_name, self.client_config_map)
         self.strategy_file_name = file_name
         self.strategy_name = strategy
-        self.strategy_config_map = config_map
+        self.strategy_config_map = config_map               ##@@##
         # Reload completer here otherwise the new file will not appear
         self.app.input_field.completer = load_completer(self)
         self.notify(f"A new config file has been created: {self.strategy_file_name}")
         self.placeholder_mode = False
         self.app.hide_input = False
 
-        await self.verify_status()
+        await self.verify_status()                                                  ##@@## create 最后自动检查状态
 
     async def get_strategy_name(
         self,  # type: HummingbotApplication

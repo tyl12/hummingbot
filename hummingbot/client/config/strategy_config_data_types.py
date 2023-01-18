@@ -15,7 +15,7 @@ class BaseStrategyConfigMap(BaseClientModel):
     strategy: str = Field(
         default=...,
         client_data=ClientFieldData(
-            prompt=lambda mi: "What is your market making strategy?",
+            prompt=lambda mi: "What is your market making strategy?",           ##@@##
             prompt_on_new=True,
         ),
     )

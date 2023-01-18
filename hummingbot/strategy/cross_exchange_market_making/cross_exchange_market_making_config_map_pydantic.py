@@ -226,7 +226,7 @@ ORDER_REFRESH_MODELS = {
 }
 
 
-class CrossExchangeMarketMakingConfigMap(BaseTradingStrategyMakerTakerConfigMap):
+class CrossExchangeMarketMakingConfigMap(BaseTradingStrategyMakerTakerConfigMap):       ##@@## 被 config_helpers.py::load_strategy_config_map_from_file()加载
     strategy: str = Field(default="cross_exchange_market_making", client_data=None)
 
     min_profitability: Decimal = Field(
@@ -247,6 +247,16 @@ class CrossExchangeMarketMakingConfigMap(BaseTradingStrategyMakerTakerConfigMap)
             prompt=lambda mi: CrossExchangeMarketMakingConfigMap.order_amount_prompt(mi),
             prompt_on_new=True,
         )
+    )
+    order_levels: int = Field(
+        default = 1,
+        description="Order levels for bid/ask on maker market.",
+        client_data=ClientFieldData(
+            prompt=lambda mi: (
+                "How may bid/ask order levels do you want to place on maker market"
+            ),
+            prompt_on_new=True,
+        ),
     )
     adjust_order_enabled: bool = Field(
         default=True,

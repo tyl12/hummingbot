@@ -497,10 +497,10 @@ def get_strategy_config_map(
     strategy: str
 ) -> Optional[Union[ClientConfigAdapter, Dict[str, ConfigVar]]]:
     """
-    Given the name of a strategy, find and load strategy-specific config map.
+    Given the name of a strategy, find and load strategy-specific config map.               ##@@##
     """
     try:
-        config_cls = get_strategy_pydantic_config_cls(strategy)
+        config_cls = get_strategy_pydantic_config_cls(strategy)                 ##@@## 加载配置类和配置文件
         if config_cls is None:  # legacy
             cm_key = f"{strategy}_config_map"
             strategy_module = __import__(f"hummingbot.strategy.{strategy}.{cm_key}",
@@ -508,13 +508,13 @@ def get_strategy_config_map(
             config_map = getattr(strategy_module, cm_key)
         else:
             hb_config = config_cls.construct()
-            config_map = ClientConfigAdapter(hb_config)
+            config_map = ClientConfigAdapter(hb_config)         ##@@##
     except Exception:
         config_map = defaultdict()
     return config_map
 
 
-def get_strategy_starter_file(strategy: str) -> Callable: ##@@## !! 加载执行　strategy/start.py 文件
+def get_strategy_starter_file(strategy: str) -> Callable:                       ##@@## !! 加载　strategy/start.py 文件
     """
     Given the name of a strategy, find and load the `start` function in
     `hummingbot/strategy/{STRATEGY_NAME}/start.py` file.
@@ -561,10 +561,10 @@ def read_yml_file(yml_path: Path) -> Dict[str, Any]:
 def get_strategy_pydantic_config_cls(strategy_name: str) -> Optional[ModelMetaclass]:
     pydantic_cm_class = None
     try:
-        pydantic_cm_pkg = f"{strategy_name}_config_map_pydantic"
+        pydantic_cm_pkg = f"{strategy_name}_config_map_pydantic"                                                        ##@@##  cross_exchange_market_making_config_map_pydantic.py
         pydantic_cm_path = root_path() / "hummingbot" / "strategy" / strategy_name / f"{pydantic_cm_pkg}.py"
         if pydantic_cm_path.exists():
-            pydantic_cm_class_name = f"{''.join([s.capitalize() for s in strategy_name.split('_')])}ConfigMap"
+            pydantic_cm_class_name = f"{''.join([s.capitalize() for s in strategy_name.split('_')])}ConfigMap"          ##@@## 获取其中 CrossExchangeMarketMakingConfigMap 方法
             pydantic_cm_mod = __import__(f"hummingbot.strategy.{strategy_name}.{pydantic_cm_pkg}",
                                          fromlist=[f"{pydantic_cm_class_name}"])
             pydantic_cm_class = getattr(pydantic_cm_mod, pydantic_cm_class_name)
@@ -573,7 +573,7 @@ def get_strategy_pydantic_config_cls(strategy_name: str) -> Optional[ModelMetacl
     return pydantic_cm_class
 
 
-async def load_strategy_config_map_from_file(yml_path: Path) -> Union[ClientConfigAdapter, Dict[str, ConfigVar]]:
+async def load_strategy_config_map_from_file(yml_path: Path) -> Union[ClientConfigAdapter, Dict[str, ConfigVar]]:   ##@@## 找到配置文件，找到strategy配置类并加载 xxxConfigMap 类
     strategy_name = strategy_name_from_file(yml_path)
     config_cls = get_strategy_pydantic_config_cls(strategy_name)
     if config_cls is None:  # legacy
@@ -581,7 +581,7 @@ async def load_strategy_config_map_from_file(yml_path: Path) -> Union[ClientConf
         template_path = get_strategy_template_path(strategy_name)
         await load_yml_into_cm_legacy(str(yml_path), str(template_path), config_map)
     else:
-        config_data = read_yml_file(yml_path)
+        config_data = read_yml_file(yml_path)           ##@@## 加载配置文件 rootdir/conf/strategies/xxx.yml
         hb_config = config_cls.construct()
         config_map = ClientConfigAdapter(hb_config)
         _load_yml_data_into_map(config_data, config_map)

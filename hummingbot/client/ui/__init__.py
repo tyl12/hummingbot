@@ -19,11 +19,11 @@ with open(realpath(join(dirname(__file__), '../../VERSION'))) as version_file:
     version = version_file.read().strip()
 
 
-def login_prompt(secrets_manager_cls: Type[BaseSecretsManager], style: Style):
+def login_prompt(secrets_manager_cls: Type[BaseSecretsManager], style: Style):  ##@@##
     err_msg = None
     secrets_manager = None
     if Security.new_password_required() and legacy_confs_exist():
-        secrets_manager = migrate_configs_prompt(secrets_manager_cls, style)
+        secrets_manager = migrate_configs_prompt(secrets_manager_cls, style)        ##@@##
     if Security.new_password_required():
         show_welcome(style)
         password = input_dialog(
@@ -89,7 +89,7 @@ def legacy_confs_exist() -> bool:
     return exist
 
 
-def migrate_configs_prompt(secrets_manager_cls: Type[BaseSecretsManager], style: Style) -> BaseSecretsManager:
+def migrate_configs_prompt(secrets_manager_cls: Type[BaseSecretsManager], style: Style) -> BaseSecretsManager:      ##@@##
     message_dialog(
         title='Configs Migration',
         text="""
@@ -111,7 +111,7 @@ def migrate_configs_prompt(secrets_manager_cls: Type[BaseSecretsManager], style:
     if password is None:
         raise ValueError("Wrong password.")
     secrets_manager = secrets_manager_cls(password)
-    errors = migrate_configs(secrets_manager)
+    errors = migrate_configs(secrets_manager)                       ##@@##
     if len(errors) != 0:
         _migration_errors_dialog(errors, style)
     else:

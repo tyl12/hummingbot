@@ -73,7 +73,7 @@ def autofix_permissions(user_group_spec: str):
     os.setuid(uid)
 
 
-async def quick_start(args: argparse.Namespace, secrets_manager: BaseSecretsManager):
+async def quick_start(args: argparse.Namespace, secrets_manager: BaseSecretsManager):       ##@@##
     config_file_name = args.config_file_name
     client_config_map = load_client_config_map_from_file()
 
@@ -97,7 +97,7 @@ async def quick_start(args: argparse.Namespace, secrets_manager: BaseSecretsMana
     strategy_config = None
     if config_file_name is not None:
         hb.strategy_file_name = config_file_name
-        strategy_config = await load_strategy_config_map_from_file(
+        strategy_config = await load_strategy_config_map_from_file(         ##@@## !!!!!
             STRATEGIES_CONF_DIR_PATH / config_file_name
         )
         hb.strategy_name = (
@@ -105,7 +105,7 @@ async def quick_start(args: argparse.Namespace, secrets_manager: BaseSecretsMana
             if isinstance(strategy_config, ClientConfigAdapter)
             else strategy_config.get("strategy").value
         )
-        hb.strategy_config_map = strategy_config
+        hb.strategy_config_map = strategy_config                ##@@## !!!!!
 
     if strategy_config is not None:
         if not all_configs_complete(strategy_config, hb.client_config_map):
@@ -139,13 +139,13 @@ def main():
     secrets_manager_cls = ETHKeyFileSecretManger
     client_config_map = load_client_config_map_from_file()
     if args.config_password is None:
-        secrets_manager = login_prompt(secrets_manager_cls, style=load_style(client_config_map))
+        secrets_manager = login_prompt(secrets_manager_cls, style=load_style(client_config_map))        ##@@## will do migrate config file
         if not secrets_manager:
             return
     else:
         secrets_manager = secrets_manager_cls(args.config_password)
 
-    asyncio.get_event_loop().run_until_complete(quick_start(args, secrets_manager))
+    asyncio.get_event_loop().run_until_complete(quick_start(args, secrets_manager))     ##@@##
 
 
 if __name__ == "__main__":

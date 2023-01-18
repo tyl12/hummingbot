@@ -52,7 +52,7 @@ class StartCommand(GatewayChainApiManager): ##@@##
         return any([s.uses_gateway_generic_connector()
                     for s in exchange_settings])
 
-    ##@@##
+                                                                                                    ##@@## self 是hummingbotapplication context, 不是 对象自身, 故其中 create command中，已经将context上下文中的 strategy_config_map 初始化好了
     def start(self,  # type: HummingbotApplication
               log_level: Optional[str] = None,
               restore: Optional[bool] = False,
@@ -97,7 +97,7 @@ class StartCommand(GatewayChainApiManager): ##@@##
 
         if script: ##@@## script
             file_name = script.split(".")[0]
-            self.strategy_file_name = file_name
+            self.strategy_file_name = file_name     ##@@## script strategy file
             self.strategy_name = file_name
         elif not await self.status_check_all(notify_success=False):
             self.notify("Status checks failed. Start aborted.")
@@ -185,8 +185,8 @@ class StartCommand(GatewayChainApiManager): ##@@##
                 self.notify(f"\nConnector status: {status}. This connector has one or more issues.\n"
                             "Refer to our Github page for more info: https://github.com/hummingbot/hummingbot")
 
-        self.notify(f"\nStatus check complete. Starting '{self.strategy_name}' strategy...") ##@@##
-        await self.start_market_making(restore) ##@@##
+        self.notify(f"\nStatus check complete. Starting '{self.strategy_name}' strategy...")            ##@@##
+        await self.start_market_making(restore)                                                         ##@@## !!!!!
 
         self._in_start_check = False
 
@@ -245,13 +245,13 @@ class StartCommand(GatewayChainApiManager): ##@@##
         except Exception as e:
             self.logger().error(str(e), exc_info=True)
 
-    def _initialize_strategy(self, strategy_name: str):
+    def _initialize_strategy(self, strategy_name: str):                                     ##@@## !!!!!
         if self.is_current_strategy_script_strategy():
             self.start_script_strategy()
         else:
-            start_strategy: Callable = get_strategy_starter_file(strategy_name) ##@@## ?1
+            start_strategy: Callable = get_strategy_starter_file(strategy_name)                     ##@@##  加载 strategy 文件
             if strategy_name in settings.STRATEGIES:
-                start_strategy(self) ##@@## !! call the strategy/xxx/start.py file
+                start_strategy(self)                                                                ##@@## !!!!! 执行， call the strategy/xxx/start.py :: start()
             else:
                 raise NotImplementedError
 

@@ -39,14 +39,14 @@ class ImportCommand:
             self.app.to_stop_config = False
             return
         strategy_path = STRATEGIES_CONF_DIR_PATH / file_name
-        config_map = await load_strategy_config_map_from_file(strategy_path)
+        config_map = await load_strategy_config_map_from_file(strategy_path)        ##@@## 记载 strategy 配置文件， rootdir/conf/strategies/xxx.yml
         self.strategy_file_name = file_name
         self.strategy_name = (
             config_map.strategy
             if not isinstance(config_map, dict)
             else config_map.get("strategy").value  # legacy
         )
-        self.strategy_config_map = config_map
+        self.strategy_config_map = config_map           ##@@## stragegy 中 start.py 参数中的 self.strategy_config_map 对象
         self.notify(f"Configuration from {self.strategy_file_name} file is imported.")
         self.placeholder_mode = False
         self.app.hide_input = False

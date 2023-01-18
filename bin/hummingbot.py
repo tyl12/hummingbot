@@ -79,7 +79,7 @@ def main():
     secrets_manager_cls = ETHKeyFileSecretManger
     ev_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()
     client_config_map = load_client_config_map_from_file()
-    if login_prompt(secrets_manager_cls, style=load_style(client_config_map)): ##@@##
+    if login_prompt(secrets_manager_cls, style=load_style(client_config_map)): ##@@## will do migrate config
         ev_loop.run_until_complete(main_async(client_config_map))
 
 

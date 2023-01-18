@@ -139,10 +139,15 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         all_markets = list(self._maker_markets | self._taker_markets)
 
         self.add_markets(all_markets)       ##@@## strategy_base中会将需要的market添加到 _sb_markets 中，并设置所有market的监听回调
+        self.log_with_clock(logging.INFO, f"Order levels: {self.order_levels}")
 
     @property
     def order_amount(self):
         return self._config_map.order_amount
+    
+    @property
+    def order_levels(self):
+        return self._config_map.order_levels
 
     @property
     def min_profitability(self):
@@ -198,8 +203,8 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
 
     @property
     def active_maker_limit_orders(self) -> List[Tuple[ExchangeBase, LimitOrder]]:
-        return [(ex, order, order.client_order_id) for ex, order in self._sb_order_tracker.active_limit_orders
-                if order.client_order_id in self._maker_to_taker_order_ids.keys()]
+        return [(ex, order, order.client_order_id) for ex, order in self._sb_order_tracker.active_limit_orders  ##@@## 所有的active_limit_order
+                if order.client_order_id in self._maker_to_taker_order_ids.keys()]  ##@@## maker 上的order
 
     @property
     def cached_limit_orders(self) -> List[Tuple[ExchangeBase, LimitOrder]]:
@@ -430,7 +435,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
     ##@@##
     async def main(self, timestamp: float):         
         try:
-            for order_level in [0,1,2,3,4]:
+            for order_level in range(1, self.order_levels+1):
                 # Calculate a mapping from market pair to list of active limit orders on the market.
                 market_pair_to_active_orders = defaultdict(list)
 
@@ -500,7 +505,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
     # TODO: ??? why not use:  len(self._taker_to_maker_order_ids.keys()) > 0
     def has_active_taker_order(self, market_pair: MarketTradingPairTuple):
         # Market orders are not being submitted as taker orders, limit orders are preferred at all times ## taker 总是提交限价单，不使用 市价单
-        limit_orders = self._sb_order_tracker.get_limit_orders() 
+        limit_orders = self._sb_order_tracker.get_limit_orders() ##@@## get_limit_orders() 返回 所有 maker/taker 上placeorder的limitorder
         limit_orders = limit_orders.get(market_pair, {})
         if len(limit_orders) > 0:
             if len(set(limit_orders.keys()).intersection(set(self._taker_to_maker_order_ids.keys()))) > 0:  ## limit_order 中 存在对冲的taker单
@@ -605,7 +610,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         market_pair = self._market_pair_tracker.get_market_pair_from_order_id(order_id) ##c_start_tracking_order_id()中会记录 order_id对应的 market_pair
 
         # Make sure to only hedge limit orders.
-        if market_pair is not None and order_id not in self._taker_to_maker_order_ids.keys(): ## 当前filled的 为 maker上的limit order ; _taker_to_maker_order_ids 记录了所有taker侧挂单的id
+        if market_pair is not None and order_id not in self._taker_to_maker_order_ids.keys(): ## 当前filled的 为 maker上的limit order (不处理 taker上的fill order event) ; _taker_to_maker_order_ids 记录了所有taker侧挂单的id
             limit_order_record = self._sb_order_tracker.get_shadow_limit_order(order_id)  ##@@## shadow limit order
             order_fill_record = (limit_order_record, order_filled_event)
 
@@ -882,7 +887,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         return True
 
     ##@@## ！！！！！
-    async def check_and_hedge_orders(self, market_pair: MakerTakerMarketPair, order_level:int):
+    async def check_and_hedge_orders(self, market_pair: MakerTakerMarketPair):
         """
         Look into the stored and un-hedged limit order fill events, and emit orders to hedge them, depending on
         availability of funds on the taker market.
@@ -915,7 +920,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
             # Taker sell
             taker_slippage_adjustment_factor = Decimal("1") - self.slippage_buffer
 
-            hedged_order_quantity = min(        ## taker 上需要卖ETH的量
+            hedged_order_quantity = min(        ## 根据maker单的fill的量，计算taker 上需要卖ETH的量
                 buy_fill_quantity / base_rate,
                 taker_market.get_available_balance(market_pair.taker.base_asset) *
                 self.order_size_taker_balance_factor
@@ -962,7 +967,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                     False,
                     quantized_hedge_amount,
                     order_price,  ##@@## 注意报价是用的orderbook对应档位的价格（对于CEX情况），而非买卖量的vwap 平均报价
-                    order_level,
+                    -1,
                     maker_order_id,
                     maker_exchange_trade_id
                 )
@@ -1053,7 +1058,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                     False,
                     quantized_hedge_amount,
                     order_price,
-                    order_level,
+                    -1,
                     maker_order_id,
                     maker_exchange_trade_id
                 )
@@ -1227,7 +1232,8 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
     async def get_market_making_price(self,
                                       market_pair: MarketTradingPairTuple,
                                       is_bid: bool,
-                                      size: Decimal):
+                                      size: Decimal,
+                                      order_level: int):
         """
         Get the ideal market making order price given a market pair, side and size.
 
@@ -1250,7 +1256,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         _, _, quote_rate, base_pair, _, base_rate, _, _, _ = self.get_conversion_rates(market_pair)
         size /= base_rate
 
-        top_bid_price, top_ask_price = self.get_top_bid_ask_from_price_samples(market_pair)
+        top_bid_price, top_ask_price = self.get_top_bid_ask_from_price_samples(market_pair) ## 从maker 上获取 order book price
 
         if is_bid:
             # Maker buy
@@ -1263,7 +1269,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                 )
                 price_above_bid = (ceil(top_bid_price / price_quantum) + 1) * price_quantum
 
-            if self.is_gateway_market(market_pair.taker):  ##@@## !!!!!! 从ｔａｋｅｒ　获取　ｐｒｉｃｅ！！！！！
+            if self.is_gateway_market(market_pair.taker):  ##@@## !!!!!! 按照taker上的交易size, 从ｔａｋｅｒ　获取卖出size量对应的　ｐｒｉｃｅ！！！！！
                 taker_price = await taker_market.get_order_price(taker_trading_pair,
                                                                  False,
                                                                  size)
@@ -1281,10 +1287,10 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                 return
 
             # Convert them from taker's price to maker's price
-            taker_price *= self.markettaker_to_maker_base_conversion_rate(market_pair)
+            taker_price *= self.markettaker_to_maker_base_conversion_rate(market_pair)  ## taker price 转换成  maker price
 
             # you are buying on the maker market and selling on the taker market
-            maker_price = taker_price / (1 + self.min_profitability)  ##@@## !!!!! 按照 profit 调整 taker上获取的报价， 用作 maker 报价
+            maker_price = taker_price / (1 + self.min_profitability)  ##@@## !!!!! 按照 profit 调整 taker上获取的报价， 用作 maker 报价  ##@@## 注意maker上  bid/ask 分别使用的是 除法 和 乘法
 
             # # If your bid is higher than highest bid price, reduce it to one tick above the top bid price
             if self.adjust_order_enabled:
@@ -1812,7 +1818,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         expiration_seconds = self._config_map.order_refresh_mode.get_expiration_seconds()  ##@@## ??? 配置流程
         order_id = None
         if is_buy:
-            try:                                                                        ## strategy_base:: buy_with_specific_market() 内部会调用 self._sb_order_tracker.c_start_tracking_limit_order() 记录订单状态
+            try:                                                                        ## strategy_base:: buy_with_specific_market() 内部会调用 self._sb_order_tracker.c_start_tracking_limit_order() 记录订单状态; 订单会被放入 _sb_order_tracker._tracked_limit_orders
                 order_id = self.buy_with_specific_market(market_info, amount,           ## => exchnage_py_base.py::buy()/_create_order() => binance_exchange.py:: _place_order()
                                                          order_type=order_type, price=price,
                                                          expiration_seconds=expiration_seconds) ##@@## 调用基类函数进行下单操作，同时，基类内部会进行order tracker; 下单返回 order_id

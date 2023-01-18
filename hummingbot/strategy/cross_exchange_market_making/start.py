@@ -9,7 +9,7 @@ from hummingbot.strategy.cross_exchange_market_making.cross_exchange_market_maki
 )
 from hummingbot.strategy.maker_taker_market_pair import MakerTakerMarketPair
 from hummingbot.strategy.market_trading_pair_tuple import MarketTradingPairTuple
-
+from hummingbot.connector.exchange
 
 def start(self):
     c_map = self.strategy_config_map
