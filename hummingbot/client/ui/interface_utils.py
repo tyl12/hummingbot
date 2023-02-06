@@ -10,7 +10,7 @@ import tabulate
 from hummingbot.client.config.config_data_types import ClientConfigEnum
 from hummingbot.client.performance import PerformanceMetrics
 from hummingbot.model.trade_fill import TradeFill
-
+import threading
 s_decimal_0 = Decimal("0")
 
 
@@ -39,7 +39,10 @@ async def _sleep(delay):
 
 async def start_process_monitor(process_monitor):
     hb_process = psutil.Process()
+    from hummingbot.client.hummingbot_application import HummingbotApplication
+    hb = HummingbotApplication.main_application()
     while True:
+        hb.logger().error(f"##@@## start_process_monitor, name:{threading.current_thread().name}, id:{threading.get_ident()}")
         with hb_process.oneshot():
             threads = hb_process.num_threads()
             process_monitor.log("CPU: {:>5}%, ".format(hb_process.cpu_percent()) +
@@ -61,6 +64,7 @@ async def start_trade_monitor(trade_monitor):
     while True:
         try:
             if hb.strategy_task is not None and not hb.strategy_task.done():
+                hb.logger().error(f"##@@## start_trade_monitor, name:{threading.current_thread().name}, id:{threading.get_ident()}")
                 if all(market.ready for market in hb.markets.values()):
                     with hb.trade_fill_db.get_new_session() as session:
                         trades: List[TradeFill] = hb._get_trades_from_session(

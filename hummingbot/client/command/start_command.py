@@ -20,7 +20,7 @@ from hummingbot.core.utils.async_utils import safe_ensure_future
 from hummingbot.exceptions import OracleRateUnavailable
 from hummingbot.strategy.script_strategy_base import ScriptStrategyBase
 from hummingbot.user.user_balances import UserBalances
-
+import threading
 if TYPE_CHECKING:
     from hummingbot.client.hummingbot_application import HummingbotApplication
 
@@ -86,6 +86,7 @@ class StartCommand(GatewayChainApiManager): ##@@##
         if self.strategy_file_name and self.strategy_name and is_quickstart:
             if self._strategy_uses_gateway_connector(settings.required_exchanges):
                 try:
+                    self.logger().error(f"##@@## start_command: start_check(): name:{threading.current_thread().name}, id:{threading.get_ident()}")
                     await asyncio.wait_for(self._gateway_monitor.ready_event.wait(), timeout=GATEWAY_READY_TIMEOUT)
                 except asyncio.TimeoutError:
                     self.notify(f"TimeoutError waiting for gateway service to go online... Please ensure Gateway is configured correctly."
@@ -209,6 +210,7 @@ class StartCommand(GatewayChainApiManager): ##@@##
     async def start_market_making(self,  # type: HummingbotApplication 
                                   restore: Optional[bool] = False):
         try:
+            self.logger().error(f"##@@## start_command: start_market_making(): name:{threading.current_thread().name}, id:{threading.get_ident()}")
             self.start_time = time.time() * 1e3  # Time in milliseconds
             tick_size = self.client_config_map.tick_size
             self.logger().info(f"Creating the clock with tick size: {tick_size}")

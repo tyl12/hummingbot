@@ -25,7 +25,7 @@ from hummingbot.core.event.events import MarketEvent, OrderFilledEvent
 from hummingbot.core.utils.async_utils import safe_gather
 from hummingbot.core.web_assistant.connections.data_types import RESTMethod
 from hummingbot.core.web_assistant.web_assistants_factory import WebAssistantsFactory
-
+import threading
 if TYPE_CHECKING:
     from hummingbot.client.config.config_helpers import ClientConfigAdapter
 
@@ -170,6 +170,7 @@ class BinanceExchange(ExchangePyBase):  ##@@##
                            order_type: OrderType,
                            price: Decimal,
                            **kwargs) -> Tuple[str, float]:
+        self.logger().error(f"##@@## binance_exchange: _place_order(): name:{threading.current_thread().name}, id:{threading.get_ident()}")
         order_result = None
         amount_str = f"{amount:f}"
         price_str = f"{price:f}"
@@ -194,6 +195,7 @@ class BinanceExchange(ExchangePyBase):  ##@@##
         return (o_id, transact_time)
 
     async def _place_cancel(self, order_id: str, tracked_order: InFlightOrder):
+        self.logger().error(f"##@@## binance_exchange: _place_cancel(): name:{threading.current_thread().name}, id:{threading.get_ident()}")
         symbol = await self.exchange_symbol_associated_to_pair(trading_pair=tracked_order.trading_pair)
         api_params = {
             "symbol": symbol,
@@ -348,6 +350,7 @@ class BinanceExchange(ExchangePyBase):  ##@@##
         small_interval_current_tick = self.current_timestamp / self.UPDATE_ORDER_STATUS_MIN_INTERVAL
         long_interval_last_tick = self._last_poll_timestamp / self.LONG_POLL_INTERVAL
         long_interval_current_tick = self.current_timestamp / self.LONG_POLL_INTERVAL
+        self.logger().error(f"##@@## binance_exchange: _update_order_fills_from_trades(): name:{threading.current_thread().name}, id:{threading.get_ident()}")
 
         if (long_interval_current_tick > long_interval_last_tick
                 or (self.in_flight_orders and small_interval_current_tick > small_interval_last_tick)):
@@ -471,6 +474,8 @@ class BinanceExchange(ExchangePyBase):  ##@@##
         return trade_updates
 
     async def _request_order_status(self, tracked_order: InFlightOrder) -> OrderUpdate:     ##@@## http 查询订单状态，构造 order_update 对象，用于更新本地状态记录
+        self.logger().error(f"##@@## binance_exchange: _request_order_status(): name:{threading.current_thread().name}, id:{threading.get_ident()}")
+
         trading_pair = await self.exchange_symbol_associated_to_pair(trading_pair=tracked_order.trading_pair)
         updated_order_data = await self._api_get(
             path_url=CONSTANTS.ORDER_PATH_URL,      ##@@## "order" , 通过http接口查询order状态， 需要指定 orderId 或者 origClientOrderId
@@ -492,6 +497,7 @@ class BinanceExchange(ExchangePyBase):  ##@@##
         return order_update
 
     async def _update_balances(self):
+        self.logger().error(f"##@@## binance_exchange: _update_balances(): name:{threading.current_thread().name}, id:{threading.get_ident()}")
         local_asset_names = set(self._account_balances.keys())
         remote_asset_names = set()
 

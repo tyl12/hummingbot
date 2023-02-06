@@ -31,6 +31,7 @@ from hummingbot.core.web_assistant.auth import AuthBase
 from hummingbot.core.web_assistant.connections.data_types import RESTMethod
 from hummingbot.core.web_assistant.web_assistants_factory import WebAssistantsFactory
 from hummingbot.logger import HummingbotLogger
+import threading
 
 if TYPE_CHECKING:
     from hummingbot.client.config.config_helpers import ClientConfigAdapter
@@ -278,6 +279,7 @@ class ExchangePyBase(ExchangeBase, ABC):
         Includes the logic that has to be processed every time a new tick happens in the bot. Particularly it enables
         the execution of the status update polling loop using an event.
         """
+        self.logger().error(f"##@@## exchange_py_base: tick, name:{threading.current_thread().name}, id:{threading.get_ident()}")
         last_recv_diff = timestamp - self._user_stream_tracker.last_recv_time
         poll_interval = (self.SHORT_POLL_INTERVAL
                          if last_recv_diff > self.TICK_INTERVAL_LIMIT
@@ -306,6 +308,7 @@ class ExchangePyBase(ExchangeBase, ABC):
 
         :return: the id assigned by the connector to the order (the client id)
         """
+        self.logger().error(f"##@@## exchange_py_base: buy(), name:{threading.current_thread().name}, id:{threading.get_ident()}")
         order_id = get_new_client_order_id(                 ##@@## local generated order id
             is_buy=True,
             trading_pair=trading_pair,
@@ -336,6 +339,7 @@ class ExchangePyBase(ExchangeBase, ABC):
         :param price: the order price
         :return: the id assigned by the connector to the order (the client id)
         """
+        self.logger().error(f"##@@## exchange_py_base: sell(), name:{threading.current_thread().name}, id:{threading.get_ident()}")
         order_id = get_new_client_order_id(                 ##@@## client order id
             is_buy=False,
             trading_pair=trading_pair,
@@ -439,6 +443,7 @@ class ExchangePyBase(ExchangeBase, ABC):
         :param order_type: the type of order to create (MARKET, LIMIT, LIMIT_MAKER)
         :param price: the order price
         """
+        self.logger().error(f"##@@## exchange_py_base: _create_order(), name:{threading.current_thread().name}, id:{threading.get_ident()}")
         exchange_order_id = ""
         trading_rule = self._trading_rules[trading_pair]        ## trading_rule 定义了一些trading的规范，譬如 min_order_size， min_notional_size
 
@@ -656,6 +661,8 @@ class ExchangePyBase(ExchangeBase, ABC):
         - The polling loop to update order status and balance status using REST API (backup for main update process)
         - The background task to process the events received through the user stream tracker (websocket connection)
         """
+        self.logger().error(f"##@@## exchange_py_base: start_network, name:{threading.current_thread().name}, id:{threading.get_ident()}")
+        
         self._stop_network()
         self.order_book_tracker.start()
         self._trading_rules_polling_task = safe_ensure_future(self._trading_rules_polling_loop())
@@ -764,6 +771,7 @@ class ExchangePyBase(ExchangeBase, ABC):
         """
         while True:
             try:
+                self.logger().error(f"##@@## exchange_py_base: _status_polling_loop, name:{threading.current_thread().name}, id:{threading.get_ident()}")
                 await self._poll_notifier.wait()
                 await self._update_time_synchronizer()
 
@@ -823,6 +831,7 @@ class ExchangePyBase(ExchangeBase, ABC):
         """
         while True:
             try:
+                self.logger().error(f"##@@## exchange_py_base: _iter_user_event_queue(), name:{threading.current_thread().name}, id:{threading.get_ident()}")
                 yield await self._user_stream_tracker.user_stream.get()
             except asyncio.CancelledError:
                 raise
@@ -841,10 +850,12 @@ class ExchangePyBase(ExchangeBase, ABC):
         self._initialize_trading_pair_symbols_from_exchange_info(exchange_info=exchange_info)
 
     async def _api_get(self, *args, **kwargs):
+        self.logger().error(f"##@@## exchange_py_base: _api_get, name:{threading.current_thread().name}, id:{threading.get_ident()}")
         kwargs["method"] = RESTMethod.GET
         return await self._api_request(*args, **kwargs)
 
     async def _api_post(self, *args, **kwargs):
+        self.logger().error(f"##@@## exchange_py_base: _api_post, name:{threading.current_thread().name}, id:{threading.get_ident()}")
         kwargs["method"] = RESTMethod.POST
         return await self._api_request(*args, **kwargs)
 

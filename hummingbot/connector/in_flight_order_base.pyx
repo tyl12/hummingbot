@@ -11,7 +11,7 @@ from async_timeout import timeout
 
 from hummingbot.core.data_type.common import OrderType, TradeType
 from hummingbot.core.data_type.limit_order import LimitOrder
-
+import threading
 s_decimal_0 = Decimal(0)
 
 GET_EX_ORDER_ID_TIMEOUT = 10  # seconds
@@ -169,10 +169,12 @@ cdef class InFlightOrderBase:
         return cls._basic_from_json(data)
 
     def check_filled_condition(self):
+        #self.logger().error(f"##@@## in_flight_order_base: check_filled_condition(): name:{threading.current_thread().name}, id:{threading.get_ident()}")
         if (abs(self.amount) - self.executed_amount_base).quantize(Decimal('1e-8')) <= 0:
             self.completely_filled_event.set()
 
     async def wait_until_completely_filled(self):                                       ##@@## ???????????
+        #self.logger().error(f"##@@## in_flight_order_base: wait_until_completely_filled(): name:{threading.current_thread().name}, id:{threading.get_ident()}")
         await self.completely_filled_event.wait()
 
     def _creation_timestamp_from_order_id(self) -> int:

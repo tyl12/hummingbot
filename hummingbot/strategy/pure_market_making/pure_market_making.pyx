@@ -27,7 +27,7 @@ from .inventory_skew_calculator cimport c_calculate_bid_ask_ratios_from_base_ass
 from .inventory_skew_calculator import calculate_total_order_size
 from .pure_market_making_order_tracker import PureMarketMakingOrderTracker
 from .moving_price_band import MovingPriceBand
-
+import threading
 
 NaN = float("nan")
 s_decimal_zero = Decimal(0)
@@ -772,6 +772,7 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
                 self.c_execute_orders_proposal(proposal)
         finally:
             self._last_timestamp = timestamp
+        self.logger().error(f"##@@## PMM. tick, name:{threading.current_thread().name}, id:{threading.get_ident()}")
 
     cdef object c_create_base_proposal(self):
         cdef:
@@ -1091,6 +1092,13 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
 
             if self._inventory_cost_price_delegate is not None:
                 self._inventory_cost_price_delegate.process_order_fill_event(order_filled_event)
+
+
+    cdef c_did_create_buy_order(self, object order_created_event):
+        self.logger().error(f"##@@## PMM. c_did_create_buy_order, name:{threading.current_thread().name}, id:{threading.get_ident()}")
+
+    cdef c_did_create_sell_order(self, object order_created_event):
+        self.logger().error(f"##@@## PMM. c_did_create_sell_order, name:{threading.current_thread().name}, id:{threading.get_ident()}")
 
     cdef c_did_complete_buy_order(self, object order_completed_event):
         cdef:

@@ -22,7 +22,7 @@ from hummingbot.core.event.events import (
 )
 from hummingbot.core.utils.async_utils import safe_ensure_future
 from hummingbot.logger.logger import HummingbotLogger
-
+import threading
 cot_logger = None
 
 
@@ -148,12 +148,14 @@ class ClientOrderTracker:
         return found_order
 
     def process_order_update(self, order_update: OrderUpdate):
+        self.logger().error(f"##@@## client_order_tracker: process_order_update(): name:{threading.current_thread().name}, id:{threading.get_ident()}")
         return safe_ensure_future(self._process_order_update(order_update))
 
     def process_trade_update(self, trade_update: TradeUpdate):      ##@@## binance exchange 接收到ws 发送过来的 order filled 事件后，会调用该func
         client_order_id: str = trade_update.client_order_id
 
         tracked_order: Optional[InFlightOrder] = self.all_fillable_orders.get(client_order_id)
+        self.logger().error(f"##@@## client_order_tracker: process_trade_update(): name:{threading.current_thread().name}, id:{threading.get_ident()}")
 
         if tracked_order:
             previous_executed_amount_base: Decimal = tracked_order.executed_amount_base
@@ -266,7 +268,7 @@ class ClientOrderTracker:
             fill_price: Decimal,
             fill_fee: TradeFeeBase,
             trade_id: str):
-        self._connector.trigger_event(              ##@@## 触发当前 order tracker所属的 binance exchanger 
+        self._connector.trigger_event(              ##@@## 触发当前 order tracker所属的 binance exchanger 的 
             MarketEvent.OrderFilled,
             OrderFilledEvent(
                 timestamp=self.current_timestamp,
