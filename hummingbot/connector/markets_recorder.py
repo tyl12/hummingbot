@@ -52,11 +52,11 @@ class MarketsRecorder:
                  config_file_path: str,
                  strategy_name: str):
         if threading.current_thread() != threading.main_thread():
-            raise EnvironmentError("MarketsRecorded can only be initialized from the main thread.")
+            raise EnvironmentError("MarketsRecorded can only be initialized from the main thread.")     ##@@## _ev_loop 调度 协程是发生在 mainthread中
 
-        self._ev_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()
+        self._ev_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()     ##@@## 处理事件回调的 eventloop 为当前loop, 运行在mainthread中
         self._sql_manager: SQLConnectionManager = sql
-        self._markets: List[ConnectorBase] = markets
+        self._markets: List[ConnectorBase] = markets                ##@@## hummingbot_application.py中 会传入 exchanger , what is derived from connectorbase 
         self._config_file_path: str = config_file_path
         self._strategy_name: str = strategy_name
         # Internal collection of trade fills in connector will be used for remote/local history reconciliation
@@ -70,7 +70,7 @@ class MarketsRecorder:
             market.add_exchange_order_ids_from_market_recorder({o.exchange_order_id: o.id for o in exchange_order_ids})
 
         self._create_order_forwarder: SourceInfoEventForwarder = SourceInfoEventForwarder(self._did_create_order)   ##@@##
-        self._fill_order_forwarder: SourceInfoEventForwarder = SourceInfoEventForwarder(self._did_fill_order)
+        self._fill_order_forwarder: SourceInfoEventForwarder = SourceInfoEventForwarder(self._did_fill_order)       ##@@##
         self._cancel_order_forwarder: SourceInfoEventForwarder = SourceInfoEventForwarder(self._did_cancel_order)
         self._fail_order_forwarder: SourceInfoEventForwarder = SourceInfoEventForwarder(self._did_fail_order)
         self._complete_order_forwarder: SourceInfoEventForwarder = SourceInfoEventForwarder(self._did_complete_order)
@@ -85,7 +85,7 @@ class MarketsRecorder:
         self._event_pairs: List[Tuple[MarketEvent, SourceInfoEventForwarder]] = [
             (MarketEvent.BuyOrderCreated, self._create_order_forwarder),
             (MarketEvent.SellOrderCreated, self._create_order_forwarder),
-            (MarketEvent.OrderFilled, self._fill_order_forwarder),
+            (MarketEvent.OrderFilled, self._fill_order_forwarder),                                  ##@@## event  -- callback func
             (MarketEvent.OrderCancelled, self._cancel_order_forwarder),
             (MarketEvent.OrderFailure, self._fail_order_forwarder),
             (MarketEvent.BuyOrderCompleted, self._complete_order_forwarder),
@@ -117,7 +117,7 @@ class MarketsRecorder:
     def start(self):
         for market in self._markets:
             for event_pair in self._event_pairs:
-                market.add_listener(event_pair[0], event_pair[1])   ##@@## 注册事件处理函数，监听 order状态变化等event
+                market.add_listener(event_pair[0], event_pair[1])                    ##@@## 向 connector (binance, hotbit 等具体的exchanger)注册事件处理函数，监听 order状态变化等event
 
     def stop(self):
         for market in self._markets:
@@ -226,9 +226,9 @@ class MarketsRecorder:
                         event_tag: int,
                         market: ConnectorBase,
                         evt: OrderFilledEvent):
-        if threading.current_thread() != threading.main_thread():
-            self._ev_loop.call_soon_threadsafe(self._did_fill_order, event_tag, market, evt)
-            return
+        if threading.current_thread() != threading.main_thread(): ##@@## ws 触发回调不是发生在mainthread中，故会进入
+            self._ev_loop.call_soon_threadsafe(self._did_fill_order, event_tag, market, evt)    ##@@## connector 触发的回调，会进入当前行, 从而触发self.ev_loop调度 _did_fill_order 协程， 而ev_loop是执行在 mainthread中; 当前线程直接调用自身，会直接跳过，进入下面; 
+            return                                                                                 ##@@## call_soon_threadsafe 是线程安全的，功能同 call_soon一样，但是可以在跨线程调用他
 
         base_asset, quote_asset = evt.trading_pair.split("-")
         timestamp: int = int(evt.timestamp * 1e3) if evt.timestamp is not None else self.db_timestamp

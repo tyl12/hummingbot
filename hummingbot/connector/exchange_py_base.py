@@ -78,7 +78,7 @@ class ExchangePyBase(ExchangeBase, ABC):
             domain=self.domain))
 
         # init UserStream Data Source and Tracker
-        self._userstream_ds = self._create_user_stream_data_source()
+        self._userstream_ds = self._create_user_stream_data_source()         ##@@## 交易所 -》ws -》 user_stream queue -> 當前模塊
         self._user_stream_tracker = UserStreamTracker(
             data_source=self._userstream_ds)
 
@@ -224,7 +224,7 @@ class ExchangePyBase(ExchangeBase, ABC):
         trading_rule = self._trading_rules[trading_pair]
         return Decimal(trading_rule.min_price_increment)
 
-    def get_order_size_quantum(self, trading_pair: str, order_size: Decimal) -> Decimal:
+    def get_order_size_quantum(self, trading_pair: str, order_size: Decimal) -> Decimal:            ##@@## 返回exchange 当前pair 的订单最小 increment 量， min_base_amount_increment
         """
         Used by quantize_order_price() in _create_order()
         Returns an order amount step, a minimum amount increment for a given trading pair.
@@ -235,7 +235,7 @@ class ExchangePyBase(ExchangeBase, ABC):
         trading_rule = self._trading_rules[trading_pair]
         return Decimal(trading_rule.min_base_amount_increment)
 
-    def quantize_order_amount(self, trading_pair: str, amount: Decimal, price: Decimal = s_decimal_0) -> Decimal:
+    def quantize_order_amount(self, trading_pair: str, amount: Decimal, price: Decimal = s_decimal_0) -> Decimal:   ##@@## amount: 当前期望的下单量， 返回： 取整到exchange 的下单单位上
         """
         Applies the trading rules to calculate the correct order amount for the market
 
@@ -246,7 +246,7 @@ class ExchangePyBase(ExchangeBase, ABC):
         :return: the quantized order amount after applying the trading rules
         """
         trading_rule = self._trading_rules[trading_pair]
-        quantized_amount: Decimal = super().quantize_order_amount(trading_pair, amount)
+        quantized_amount: Decimal = super().quantize_order_amount(trading_pair, amount)     ##@@## call to exchange_base.pyx， 得到当前订单量 取整到 最小订单增量 min_base_amount_increment 的整数倍
 
         # Check against min_order_size and min_notional_size. If not passing either check, return 0.
         if quantized_amount < trading_rule.min_order_size:
@@ -259,7 +259,7 @@ class ExchangePyBase(ExchangeBase, ABC):
             notional_size = price * quantized_amount
 
         # Add 1% as a safety factor in case the prices changed while making the order.
-        if notional_size < trading_rule.min_notional_size * Decimal("1.01"):  ##@@##
+        if notional_size < trading_rule.min_notional_size * Decimal("1.01"):  ##@@## 当前下单量所对应的 U的量，应该大于当前pair的最小下单U, 交易所未 指定，默认为 0
             return s_decimal_0
         return quantized_amount
 

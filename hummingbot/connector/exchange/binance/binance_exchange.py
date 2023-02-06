@@ -297,9 +297,9 @@ class BinanceExchange(ExchangePyBase):  ##@@##
                                 flat_fees=[TokenAmount(amount=Decimal(event_message["n"]), token=event_message["N"])]
                             )
                             trade_update = TradeUpdate(
-                                trade_id=str(event_message["t"]),       ##@@##
-                                client_order_id=client_order_id,
-                                exchange_order_id=str(event_message["i"]),  ##@@##
+                                trade_id=str(event_message["t"]),       ##@@## 针对每个filled trade id
+                                client_order_id=client_order_id,           ##@@## hummingbot client order id
+                                exchange_order_id=str(event_message["i"]),  ##@@## exchange order id
                                 trading_pair=tracked_order.trading_pair,
                                 fee=fee,
                                 fill_base_amount=Decimal(event_message["l"]),
@@ -307,7 +307,7 @@ class BinanceExchange(ExchangePyBase):  ##@@##
                                 fill_price=Decimal(event_message["L"]),
                                 fill_timestamp=event_message["T"] * 1e-3,
                             )
-                            self._order_tracker.process_trade_update(trade_update)
+                            self._order_tracker.process_trade_update(trade_update)      ##@@## 更新交易，针对 每个独立的 filled_order, 伴随着 f
 
                     tracked_order = self._order_tracker.all_updatable_orders.get(client_order_id) ## update other status: CANCELED, REPLACED, REJECTED, EXPIRED
                     if tracked_order is not None:
@@ -410,8 +410,8 @@ class BinanceExchange(ExchangePyBase):  ##@@##
                             market=self.display_name,
                             exchange_trade_id=str(trade["id"]),
                             symbol=trading_pair))
-                        self.trigger_event(
-                            MarketEvent.OrderFilled,
+                        self.trigger_event(                     ##@@## 触发trade 事件通知
+                            MarketEvent.OrderFilled,            ##@@##
                             OrderFilledEvent(
                                 timestamp=float(trade["time"]) * 1e-3,
                                 order_id=self._exchange_order_ids.get(str(trade["orderId"]), None),

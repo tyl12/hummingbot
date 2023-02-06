@@ -64,7 +64,7 @@ cdef class PubSub:
     def get_listeners(self, event_tag: Enum) -> List[EventListener]:
         return self.c_get_listeners(event_tag.value)
 
-    def trigger_event(self, event_tag: Enum, message: any):
+    def trigger_event(self, event_tag: Enum, message: any):     ##@@## triggered by binance_exchange.py for filled order event
         self.c_trigger_event(event_tag.value, message)
 
     cdef c_log_exception(self, int64_t event_tag, object arg):

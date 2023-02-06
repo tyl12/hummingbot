@@ -164,7 +164,7 @@ cdef class ExchangeBase(ConnectorBase):
             return s_decimal_NaN
         return self.c_quantize_order_price(trading_pair, top_price)
 
-    cdef ClientOrderBookQueryResult c_get_vwap_for_volume(self, str trading_pair, bint is_buy, object volume): ##@@##  vwap: volume weighted average price. 指定ETH交易量，获得ETH的平均交易价
+    cdef ClientOrderBookQueryResult c_get_vwap_for_volume(self, str trading_pair, bint is_buy, object volume): ##@@##  vwap: voluquantize_order_amountme weighted average price. 指定ETH交易量，获得ETH的平均交易价
         cdef:
             OrderBook order_book = self.c_get_order_book(trading_pair)
             OrderBookQueryResult result = order_book.c_get_vwap_for_volume(is_buy, float(volume))
@@ -307,7 +307,7 @@ cdef class ExchangeBase(ConnectorBase):
     def quantize_order_price(self, trading_pair: str, price: Decimal) -> Decimal:
         return self.c_quantize_order_price(trading_pair, price)
 
-    def quantize_order_amount(self, trading_pair: str, amount: Decimal) -> Decimal:
+    def quantize_order_amount(self, trading_pair: str, amount: Decimal) -> Decimal:     ##@@## call to connector_base.pyx， 返回exchange 当前pair 的订单最小 increment 量， min_base_amount_increment
         return self.c_quantize_order_amount(trading_pair, amount)
 
     def supported_order_types(self):

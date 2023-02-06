@@ -381,7 +381,7 @@ cdef class ConnectorBase(NetworkIterator):
         """
         raise NotImplementedError
 
-    cdef object c_get_order_size_quantum(self, str trading_pair, object order_size):
+    cdef object c_get_order_size_quantum(self, str trading_pair, object order_size):                                    ##@@## call to exchange_py_base.py: get_order_size_quantum(), 返回exchange 当前pair 的订单最小 increment 量， min_base_amount_increment
         return self.get_order_size_quantum(trading_pair, order_size)
 
     def get_order_size_quantum(self, trading_pair: str, order_size: Decimal) -> Decimal:
@@ -402,8 +402,8 @@ cdef class ConnectorBase(NetworkIterator):
         """
         return self.c_quantize_order_price(trading_pair, price)
 
-    cdef object c_quantize_order_amount(self, str trading_pair, object amount, object price=s_decimal_NaN):  ##@@##
-        order_size_quantum = self.c_get_order_size_quantum(trading_pair, amount)
+    cdef object c_quantize_order_amount(self, str trading_pair, object amount, object price=s_decimal_NaN):                 ##@@## called from exchange_py_base.py::exchange_base.pyx:c_quantize_order_amount() , 
+        order_size_quantum = self.c_get_order_size_quantum(trading_pair, amount)                                            ##@@## 返回当前订单量 取整到 最小订单增量 的整数倍
         return (amount // order_size_quantum) * order_size_quantum   ## 向下取整
 
     def quantize_order_amount(self, trading_pair: str, amount: Decimal) -> Decimal:

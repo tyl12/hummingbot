@@ -150,7 +150,7 @@ class ClientOrderTracker:
     def process_order_update(self, order_update: OrderUpdate):
         return safe_ensure_future(self._process_order_update(order_update))
 
-    def process_trade_update(self, trade_update: TradeUpdate):
+    def process_trade_update(self, trade_update: TradeUpdate):      ##@@## binance exchange 接收到ws 发送过来的 order filled 事件后，会调用该func
         client_order_id: str = trade_update.client_order_id
 
         tracked_order: Optional[InFlightOrder] = self.all_fillable_orders.get(client_order_id)
@@ -266,7 +266,7 @@ class ClientOrderTracker:
             fill_price: Decimal,
             fill_fee: TradeFeeBase,
             trade_id: str):
-        self._connector.trigger_event(
+        self._connector.trigger_event(              ##@@## 触发当前 order tracker所属的 binance exchanger 
             MarketEvent.OrderFilled,
             OrderFilledEvent(
                 timestamp=self.current_timestamp,

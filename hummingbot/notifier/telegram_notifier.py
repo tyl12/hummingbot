@@ -78,7 +78,7 @@ class TelegramNotifier(NotifierBase):
         # Register command handler and start telegram message polling
         handles = [MessageHandler(Filters.text, self.handler)]
         for handle in handles:
-            self._updater.dispatcher.add_handler(handle)
+            self._updater.dispatcher.add_handler(handle)    ##@@## 设置tg 的消息回调处理函数
 
     def __eq__(self, other):
         return (
@@ -97,7 +97,7 @@ class TelegramNotifier(NotifierBase):
                 timeout=30,
                 read_latency=60,
             )
-            self._send_msg_task = safe_ensure_future(self.send_msg_from_queue(), loop=self._ev_loop)
+            self._send_msg_task = safe_ensure_future(self.send_msg_from_queue(), loop=self._ev_loop)        ##@@## 发送消息任务是在 主线程的loop 中执行的
             self.logger().info("Telegram is listening...")
 
     def stop(self) -> None:
@@ -109,7 +109,7 @@ class TelegramNotifier(NotifierBase):
 
     @authorized_only
     def handler(self, bot: Bot, update: Update) -> None:
-        safe_ensure_future(self.handler_loop(bot, update), loop=self._ev_loop)
+        safe_ensure_future(self.handler_loop(bot, update), loop=self._ev_loop)      ##@@## 处理tg消息
 
     async def handler_loop(self, bot: Bot, update: Update) -> None:
         async_scheduler: AsyncCallScheduler = AsyncCallScheduler.shared_instance()
@@ -128,7 +128,7 @@ class TelegramNotifier(NotifierBase):
                 pd.set_option('display.max_columns', 500)
                 pd.set_option('display.width', 1000)
 
-                await async_scheduler.call_async(self._hb._handle_command, input_text)
+                await async_scheduler.call_async(self._hb._handle_command, input_text)  ##@@## 调用hb的命令
 
                 # Reset to normal, so that pandas's default autodetect width still works
                 pd.set_option('display.max_rows', 0)
@@ -152,7 +152,7 @@ class TelegramNotifier(NotifierBase):
     async def send_msg_from_queue(self):
         while True:
             try:
-                new_msg: str = await self._msg_queue.get()
+                new_msg: str = await self._msg_queue.get()      ##@@## 从queue中读取消息，发送tg, block ops
                 if isinstance(new_msg, str) and len(new_msg) > 0:
                     await self.send_msg_async(new_msg)
             except Exception as e:
@@ -175,7 +175,7 @@ class TelegramNotifier(NotifierBase):
 
         try:
             try:
-                await self._async_call_scheduler.call_async(lambda: bot.send_message(
+                await self._async_call_scheduler.call_async(lambda: bot.send_message(           ##@@## 发送tg消息，同时设置 回复字段按钮， 如果网络错误，则重试一次， 如果第二次错误，则退出，读取下一个消息继续发送; 此处发送完成后，就返回了，不会block
                     self._chat_id,
                     text=formatted_msg,
                     parse_mode=ParseMode.HTML,

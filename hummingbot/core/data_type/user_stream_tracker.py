@@ -7,7 +7,7 @@ from hummingbot.core.utils.async_utils import safe_ensure_future, safe_gather
 from hummingbot.logger import HummingbotLogger
 
 
-class UserStreamTracker:
+class UserStreamTracker:        ##@@## 用於承載 ws 接收到的交易所事件
     _ust_logger: Optional[HummingbotLogger] = None
 
     @classmethod
@@ -36,5 +36,5 @@ class UserStreamTracker:
         await safe_gather(self._user_stream_tracking_task)
 
     @property
-    def user_stream(self) -> asyncio.Queue:
+    def user_stream(self) -> asyncio.Queue:      ##@@##
         return self._user_stream
