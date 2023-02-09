@@ -360,7 +360,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
             # See if there're any open orders.
             if market_pair in tracked_maker_orders and len(tracked_maker_orders[market_pair]) > 0:
                 limit_orders = list(tracked_maker_orders[market_pair].values())
-                bid, ask = self.get_top_bid_ask(market_pair)StrategyPyBase
+                bid, ask = self.get_top_bid_ask(market_pair)
                 mid_price = (bid + ask) / 2
                 df = LimitOrder.to_pandas(limit_orders, mid_price)
                 df_lines = str(df).split("\n")
@@ -694,7 +694,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
             
             # Maker order filled
             # Check if this fill was already processed or not
-            if order_id not in self._maker_to_hedging_trades.keys():
+            if order_id not in self._maker_to_hedging_trades.keys():        ##@@## 特定maker 单的第一笔成交（ filled 的trade )
                 self._maker_to_hedging_trades[order_id] = [] ## 记录了 fill 的 maker单的 client_order_id => 对应的 exchange_trade_id, 一个maker单可能对应多个 exchange_trade_id 即多次的maker上的fill事件
             if exchange_trade_id not in self._maker_to_hedging_trades[order_id]:
                 # This maker fill has not been processed yet, submit Taker hedge order
@@ -783,13 +783,13 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
 
                 # Delete hedged maker fill event
                 fill_events = []
-                for fill_event in self._order_fill_sell_events[market_pair]:
+                for fill_event in self._order_fill_sell_events[market_pair]: ## taker 上的买单 completed, 对应了之前发生的 maker上的卖单事件; 遍历所有的卖单 的 filled event，如果卖单事件已经不在 ongoing_hedging 列表里 （前面清理过了），则清理掉该条目
                     if fill_event[1].exchange_trade_id in self._ongoing_hedging.keys():
                         fill_events += [fill_event]
-                self._order_fill_sell_events[market_pair] = fill_events
+                self._order_fill_sell_events[market_pair] = fill_events ##@@## 最后 _order_fill_sell_events 中是所有还没有对冲完成的 在maker上发生的卖单的 filled event
 
                 # Cleanup maker fill events - no longer needed to create taker orders if all fills were hedged
-                if len(self._order_fill_sell_events[market_pair]) == 0:
+                if len(self._order_fill_sell_events[market_pair]) == 0:         ##@@## 所有的 maker上发生的 卖单 都已经没对冲掉了
                     del self._order_fill_sell_events[market_pair]
 
     def did_complete_sell_order(self, order_completed_event: SellOrderCompletedEvent):
@@ -909,9 +909,9 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
         buy_fill_records = self._order_fill_buy_events.get(market_pair, [])  ## maker上 order_filled event record, 更新于 task 2;    
         sell_fill_records = self._order_fill_sell_events.get(market_pair, [])
 
-        buy_fill_records = [fill_event for fill_event in buy_fill_records                                                       ##@@## fill_event 记录了 （limit order , filled trade event for the order )
+        buy_fill_records = [fill_event for fill_event in buy_fill_records                                                       ##@@## fill_event 记录了 （limit order , filled trade event for the order ), (maker 单 order id, 对应的 filled trade 的 trade event 事件信息)
                             if (fill_event[1].exchange_trade_id not in self._ongoing_hedging.keys() or                          ##@@## _ongoing_hedging 记录 exchange_trade_id ,  更新于 task 1
-                                self._ongoing_hedging[fill_event[1].exchange_trade_id] is fill_event[1].exchange_trade_id)]     # did_filled_order 发生，但还没有送去对冲place_order
+                                self._ongoing_hedging[fill_event[1].exchange_trade_id] is fill_event[1].exchange_trade_id)]     # did_filled_order 发生，但还没有送去对冲place_order ; 那些对冲完成的 trade, _ongoing_hedging[exchange_trade_id] 会设置为其对冲 taker 单的order_id
         sell_fill_records = [fill_event for fill_event in sell_fill_records
                              if (fill_event[1].exchange_trade_id not in self._ongoing_hedging.keys() or
                                  self._ongoing_hedging[fill_event[1].exchange_trade_id] is fill_event[1].exchange_trade_id)]

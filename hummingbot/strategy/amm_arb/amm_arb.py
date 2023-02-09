@@ -227,7 +227,7 @@ class AmmArbStrategy(StrategyPyBase):
             return
         await self.apply_slippage_buffers(profitable_arb_proposals)
         self.apply_budget_constraint(profitable_arb_proposals)
-        await self.execute_arb_proposals(profitable_arb_proposals)
+        await self.execute_arb_proposals(profitable_arb_proposals)  ##@@##
 
     async def apply_gateway_transaction_cancel_interval(self):
         # XXX (martin_kou): Concurrent cancellations are not supported before the nonce architecture is fixed.
