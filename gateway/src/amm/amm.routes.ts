@@ -66,7 +66,7 @@ import { NetworkSelectionRequest } from '../services/common-interfaces';
 export namespace AmmRoutes {
   export const router = Router();
 
-  router.post(  //##@@## 
+  router.post(  //##@@##  amm/price
     '/price',
     asyncHandler(
       async (
@@ -80,7 +80,7 @@ export namespace AmmRoutes {
   );
 
   router.post(
-    '/trade',
+    '/trade',       //##@@##  amm/trade
     asyncHandler(
       async (
         req: Request<{}, {}, TradeRequest>,

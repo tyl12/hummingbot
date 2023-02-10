@@ -23,11 +23,11 @@ def start(self):
     debug_price_shim = amm_arb_config_map.get("debug_price_shim").value
     gateway_transaction_cancel_interval = amm_arb_config_map.get("gateway_transaction_cancel_interval").value
 
-    self._initialize_markets([(connector_1, [market_1]), (connector_2, [market_2])])
+    self._initialize_markets([(connector_1, [market_1]), (connector_2, [market_2])])  ##@@## gateway connector init
     base_1, quote_1 = market_1.split("-")
     base_2, quote_2 = market_2.split("-")
 
-    market_info_1 = MarketTradingPairTuple(self.markets[connector_1], market_1, base_1, quote_1)
+    market_info_1 = MarketTradingPairTuple(self.markets[connector_1], market_1, base_1, quote_1)    ##@@## 
     market_info_2 = MarketTradingPairTuple(self.markets[connector_2], market_2, base_2, quote_2)
     self.market_trading_pair_tuples = [market_info_1, market_info_2]
 

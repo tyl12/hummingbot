@@ -270,7 +270,7 @@ class HummingbotApplication(*commands):
     def _initialize_markets(self, market_names: List[Tuple[str, List[str]]]):
         # aggregate trading_pairs if there are duplicate markets
 
-        for market_name, trading_pairs in market_names:
+        for market_name, trading_pairs in market_names:  ##@@##
             if market_name not in self.market_trading_pairs_map:
                 self.market_trading_pairs_map[market_name] = []
             for hb_trading_pair in trading_pairs:
@@ -291,7 +291,7 @@ class HummingbotApplication(*commands):
                 init_params.update(trading_pairs=trading_pairs, trading_required=self._trading_required)
                 connector_class = get_connector_class(connector_name)
                 read_only_config = ReadOnlyClientConfigAdapter.lock_config(self.client_config_map)
-                connector = connector_class(read_only_config, **init_params)
+                connector = connector_class(read_only_config, **init_params)    ##@@## load connector (exchange/gateway) class
             self.markets[connector_name] = connector
 
         self.markets_recorder = MarketsRecorder(

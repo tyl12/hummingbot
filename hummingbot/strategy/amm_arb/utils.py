@@ -34,7 +34,7 @@ async def create_arb_proposals(
         m_1_q_price: Optional[Decimal] = await market_info_1.market.get_quote_price(
             market_info_1.trading_pair, is_buy, order_amount
         )
-        m_1_o_price: Optional[Decimal] = await market_info_1.market.get_order_price(
+        m_1_o_price: Optional[Decimal] = await market_info_1.market.get_order_price(    ##@@##
             market_info_1.trading_pair, is_buy, order_amount
         )
         m_2_q_price: Optional[Decimal] = await market_info_2.market.get_quote_price(

@@ -197,7 +197,7 @@ class AmmArbStrategy(StrategyPyBase):
         min profitability required, applies the slippage buffer, applies budget constraint, then finally execute the
         arbitrage.
         """
-        self._all_arb_proposals = await create_arb_proposals(
+        self._all_arb_proposals = await create_arb_proposals(           ##@@##
             market_info_1=self._market_info_1,
             market_info_2=self._market_info_2,
             market_1_extra_flat_fees=(
@@ -291,7 +291,7 @@ class AmmArbStrategy(StrategyPyBase):
 
         results = []
         for side in [arb_proposal.first_side, arb_proposal.second_side]:
-            if self.is_gateway_market(side.market_info):
+            if self.is_gateway_market(side.market_info):    ##@@## always execute gateway trade first
                 results.insert(0, side)
             else:
                 results.append(side)
@@ -309,7 +309,7 @@ class AmmArbStrategy(StrategyPyBase):
                 continue
 
             if not self._concurrent_orders_submission:
-                arb_proposal = self.prioritize_evm_exchanges(arb_proposal)
+                arb_proposal = self.prioritize_evm_exchanges(arb_proposal)  ##@@##
 
             self.logger().info(f"Found arbitrage opportunity!: {arb_proposal}")
 
@@ -319,7 +319,7 @@ class AmmArbStrategy(StrategyPyBase):
                                     f"Placing {side} order for {arb_side.amount} {arb_side.market_info.base_asset} "
                                     f"at {arb_side.market_info.market.display_name} at {arb_side.order_price} price")
 
-                order_id: str = await self.place_arb_order(
+                order_id: str = await self.place_arb_order( ##@@##
                     arb_side.market_info,
                     arb_side.is_buy,
                     arb_side.amount,
@@ -346,8 +346,9 @@ class AmmArbStrategy(StrategyPyBase):
             is_buy: bool,
             amount: Decimal,
             order_price: Decimal) -> str:
+            
         place_order_fn: Callable[[MarketTradingPairTuple, Decimal, OrderType, Decimal], str] = \
-            cast(Callable, self.buy_with_specific_market if is_buy else self.sell_with_specific_market)
+            cast(Callable, self.buy_with_specific_market if is_buy else self.sell_with_specific_market) ##@@##
 
         # If I'm placing order under a gateway price shim, then the prices in the proposal are fake - I should fetch
         # the real prices before I make the order on the gateway side. Otherwise, the orders are gonna fail because
@@ -359,13 +360,13 @@ class AmmArbStrategy(StrategyPyBase):
             slippage_buffer_factor: Decimal = Decimal(1) + slippage_buffer
             if not is_buy:
                 slippage_buffer_factor = Decimal(1) - slippage_buffer
-            market: GatewayEVMAMM = cast(GatewayEVMAMM, market_info.market)
+            market: GatewayEVMAMM = cast(GatewayEVMAMM, market_info.market)  ##@@## !!!!!
             if GatewayPriceShim.get_instance().has_price_shim(
                     market.connector_name, market.chain, market.network, market_info.trading_pair):
                 order_price = await market.get_order_price(market_info.trading_pair, is_buy, amount, ignore_shim=True)
                 order_price *= slippage_buffer_factor
 
-        return place_order_fn(market_info, amount, market_info.market.get_taker_order_type(), order_price)
+        return place_order_fn(market_info, amount, market_info.market.get_taker_order_type(), order_price) ##@@##
 
     def ready_for_new_arb_trades(self) -> bool:
         """

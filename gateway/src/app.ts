@@ -59,15 +59,15 @@ gatewayApp.use(
 
 // mount sub routers
 gatewayApp.use('/config', ConfigRoutes.router);
-gatewayApp.use('/network', NetworkRoutes.router);
-gatewayApp.use('/evm', EVMRoutes.router);
-gatewayApp.use('/connectors', ConnectorsRoutes.router);
+gatewayApp.use('/network', NetworkRoutes.router);   // config, poll, token
+gatewayApp.use('/evm', EVMRoutes.router);   //##@@## nonce, approve, cancel
+gatewayApp.use('/connectors', ConnectorsRoutes.router); // hummingbot connectors list
 
-gatewayApp.use('/amm', AmmRoutes.router);
-gatewayApp.use('/amm/perp', PerpAmmRoutes.router);
-gatewayApp.use('/amm/liquidity', AmmLiquidityRoutes.router);
+gatewayApp.use('/amm', AmmRoutes.router);   //##@@## amm/price
+gatewayApp.use('/amm/perp', PerpAmmRoutes.router);  //perp
+gatewayApp.use('/amm/liquidity', AmmLiquidityRoutes.router);  // uni v3
 gatewayApp.use('/clob', ClobRoutes.router);
-gatewayApp.use('/wallet', WalletRoutes.router);
+gatewayApp.use('/wallet', WalletRoutes.router); //add, remove
 gatewayApp.use('/solana', SolanaRoutes.router);
 gatewayApp.use('/serum', SerumRoutes.router);
 gatewayApp.use('/near', NearRoutes.router);

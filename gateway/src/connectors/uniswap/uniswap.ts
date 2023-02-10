@@ -45,7 +45,7 @@ export class Uniswap implements Uniswapish {
     }
     this.chainId = this.chain.chainId;
     this._ttl = UniswapConfig.config.ttl;
-    this._maximumHops = UniswapConfig.config.maximumHops;
+    this._maximumHops = UniswapConfig.config.maximumHops;       //##@@##
     this._alphaRouter = new AlphaRouter({
       chainId: this.chainId,
       provider: this.chain.provider,
@@ -134,7 +134,7 @@ export class Uniswap implements Uniswapish {
   /**
    * Default maximum number of hops for to go through for a swap transactions.
    */
-  public get maximumHops(): number {
+  public get maximumHops(): number {    //##@@##
     return this._maximumHops;
   }
 

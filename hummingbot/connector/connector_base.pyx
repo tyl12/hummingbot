@@ -422,7 +422,7 @@ cdef class ConnectorBase(NetworkIterator):
         """
         raise NotImplementedError
 
-    async def get_order_price(self, trading_pair: str, is_buy: bool, amount: Decimal) -> Decimal:
+    async def get_order_price(self, trading_pair: str, is_buy: bool, amount: Decimal) -> Decimal:                   ##@@## for gateway connector, it's implemented in class: GatewayEVMAMM
         """
         Returns a price required for order submission, this price could differ from the quote price (e.g. for
         an exchange with order book).
