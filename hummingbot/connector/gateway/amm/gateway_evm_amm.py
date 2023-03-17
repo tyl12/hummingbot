@@ -389,7 +389,7 @@ class GatewayEVMAMM(ConnectorBase):
         else:
             gas_price_token: str = price_response["gasPriceToken"]
             gas_cost: Decimal = Decimal(price_response["gasCost"])
-            price: Decimal = Decimal(price_response["price"])
+            price: Decimal = Decimal(price_response["price"]) //##@@## uniswap.controllers.ts:: price() :: price字段, 无法处理多位小数
             self.network_transaction_fee = TokenAmount(gas_price_token, gas_cost)
             if process_exception is True:
                 gas_limit: int = int(price_response["gasLimit"])
@@ -462,10 +462,10 @@ class GatewayEVMAMM(ConnectorBase):
 
         # Pull the price from gateway.
         try:
-            resp: Dict[str, Any] = await self._get_gateway_instance().get_price(                     ##@@##
+            resp: Dict[str, Any] = await self._get_gateway_instance().get_price(                     ##@@## ref to uniswap.controllers.ts:: price()
                 self.chain, self.network, self.connector_name, base, quote, amount, side
             )
-            return self.parse_price_response(base, quote, amount, side, price_response=resp)
+            return self.parse_price_response(base, quote, amount, side, price_response=resp)  ##@@## sdk trade中的price字段
         except asyncio.CancelledError:
             raise
         except Exception as e:
@@ -486,11 +486,11 @@ class GatewayEVMAMM(ConnectorBase):
         """
         This is simply the quote price
         """
-        return await self.get_quote_price(trading_pair, is_buy, amount, ignore_shim=ignore_shim)
+        return await self.get_quote_price(trading_pair, is_buy, amount, ignore_shim=ignore_shim) ##@@## 计入fee， 未计入 slippage， amountout/amountin
 
 
     ##@@## !!
-    def buy(self, trading_pair: str, amount: Decimal, order_type: OrderType, price: Decimal, **kwargs) -> str:
+    def buy(self, trading_pair: str, amount: Decimal, order_type: OrderType, price: Decimal, **kwargs) -> str:  ##@@##
         """
         Buys an amount of base token for a given price (or cheaper).
         :param trading_pair: The market trading pair
@@ -563,7 +563,7 @@ class GatewayEVMAMM(ConnectorBase):
                 trade_type,
                 amount,
                 price,
-                **request_args
+                **request_args  ##@@## req.nonce in this
             )
             transaction_hash: Optional[str] = order_result.get("txHash")
             if transaction_hash is not None:

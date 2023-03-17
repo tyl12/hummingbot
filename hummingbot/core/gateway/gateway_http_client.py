@@ -466,7 +466,7 @@ class GatewayHttpClient:
             "allowedSlippage": "0/1",  # hummingbot applies slippage itself
         }
         if nonce is not None:
-            request_payload["nonce"] = int(nonce)
+            request_payload["nonce"] = int(nonce) ##@@##
         if max_fee_per_gas is not None:
             request_payload["maxFeePerGas"] = str(max_fee_per_gas)
         if max_priority_fee_per_gas is not None:

@@ -35,7 +35,7 @@ s_decimal_neg_one = Decimal(-1)
 pmm_logger = None
 
 
-cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
+cdef class PureMarketMakingStrategy(StrategyBase): //##@@##
     OPTION_LOG_CREATE_ORDER = 1 << 3
     OPTION_LOG_MAKER_ORDER_FILLED = 1 << 4
     OPTION_LOG_STATUS_REPORT = 1 << 5
@@ -419,7 +419,7 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
     def moving_price_band(self) -> MovingPriceBand:
         return self._moving_price_band
 
-    def get_price(self) -> Decimal:
+    def get_price(self) -> Decimal:                                                 ##@@## ???
         price_provider = self._asset_price_delegate or self._market_info
         if self._price_type is PriceType.LastOwnTrade:
             price = self._last_own_trade_price
@@ -668,7 +668,7 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
 
         assets_df = map_df_to_str(self.pure_mm_assets_df(not self._inventory_skew_enabled))
         # append inventory skew stats.
-        if self._inventory_skew_enabled:
+        if self._inventory_skew_enabled:  ###@@##  根据库存调整报价
             inventory_skew_df = map_df_to_str(self.inventory_skew_stats_data_frame())
             assets_df = assets_df.append(inventory_skew_df)
 
@@ -1169,7 +1169,7 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
 
         self._filled_sells_balance += 1
         self._last_own_trade_price = limit_order_record.price
-active_orders
+
         self.log_with_clock(
             logging.INFO,
             f"({self.trading_pair}) Maker sell order {order_id} "

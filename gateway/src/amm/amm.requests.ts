@@ -19,7 +19,7 @@ export interface PriceResponse {
   quote: string;
   amount: string;
   rawAmount: string;
-  expectedAmount: string;
+  expectedAmount: string; //##@@##
   price: string;
   network: string;
   timestamp: number;

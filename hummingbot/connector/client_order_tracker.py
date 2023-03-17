@@ -49,7 +49,8 @@ class ClientOrderTracker:
         (2) Cannot retrieve exchange_order_id of an order
         (3) Error thrown by exchange when fetching order status
         """
-        self._connector: ConnectorBase = connector
+        self._connector: ConnectorBase = connector                  ##@@## order filled 事件会转发给connector; ref to : ExchangePyBase 中， self._order_tracker: ClientOrderTracker = ClientOrderTracker(connector=self)
+                                                                                        ##@@## 故此处的 connector 是 各个 strategy 实现
         self._lost_order_count_limit = lost_order_count_limit
                                                                                                                                 ##@@## 三种状态 的订单列表
         self._in_flight_orders: Dict[str, InFlightOrder] = {}
@@ -158,7 +159,7 @@ class ClientOrderTracker:
         self.logger().error(f"##@@## client_order_tracker: process_trade_update(): name:{threading.current_thread().name}, id:{threading.get_ident()}")
 
         if tracked_order:
-            previous_executed_amount_base: Decimal = tracked_order.executed_amount_base
+            previous_executed_amount_base: Decimal = tracked_order.executed_amount_base  ##@@## executed_amount_base 记录了该 order_id 所有filled amount的累积，而非当前这次的filled amount
 
             updated: bool = tracked_order.update_with_trade_update(trade_update)
             if updated:
@@ -329,7 +330,7 @@ class ClientOrderTracker:
         if prev_executed_amount_base < tracked_order.executed_amount_base:
             self.logger().info(
                 f"The {tracked_order.trade_type.name.upper()} order {tracked_order.client_order_id} "
-                f"amounting to {tracked_order.executed_amount_base}/{tracked_order.amount} "
+                f"amounting to {tracked_order.executed_amount_base}/{tracked_order.amount} "                    ##@@## executed_amount_base 已经filled的量，amount 订单下单的总量 
                 f"{tracked_order.base_asset} has been filled."
             )
             self._trigger_filled_event(

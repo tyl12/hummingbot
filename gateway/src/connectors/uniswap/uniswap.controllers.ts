@@ -169,15 +169,15 @@ export async function price(
   }
 
   const trade = tradeInfo.expectedTrade.trade;
-  const expectedAmount = tradeInfo.expectedTrade.expectedAmount;
+  const expectedAmount = tradeInfo.expectedTrade.expectedAmount; //##@@## 计入滑点后的期望输出
 
   const tradePrice =
-    req.side === 'BUY' ? trade.executionPrice.invert() : trade.executionPrice;
+    req.side === 'BUY' ? trade.executionPrice.invert() : trade.executionPrice; //##@@## executionPrice 计入了fee,但未计入 slippage
 
   const gasLimitTransaction = ethereumish.gasLimitTransaction;
   const gasPrice = ethereumish.gasPrice;
   const gasLimitEstimate = uniswapish.gasLimitEstimate;
-  return {
+  return {  //##@@## gateway_evm_amm.py 中 get_price() 的返回值
     network: ethereumish.chain,
     timestamp: startTimestamp,
     latency: latency(startTimestamp, Date.now()),
@@ -185,8 +185,8 @@ export async function price(
     quote: tradeInfo.quoteToken.address,
     amount: new Decimal(req.amount).toFixed(tradeInfo.baseToken.decimals),
     rawAmount: tradeInfo.requestAmount.toString(),
-    expectedAmount: expectedAmount.toSignificant(8),
-    price: tradePrice.toSignificant(8),
+    expectedAmount: expectedAmount.toSignificant(8),// ##@@##
+    price: tradePrice.toSignificant(8),  //##@@##  NOTES: 无法处理小价格币种 !!!!!
     gasPrice: gasPrice,
     gasPriceToken: ethereumish.nativeTokenSymbol,
     gasLimit: gasLimitTransaction,
@@ -268,7 +268,7 @@ export async function trade(
       uniswapish.ttl,
       uniswapish.routerAbi,
       gasLimitTransaction,
-      req.nonce,
+      req.nonce,  //##@@## called fraom gateway_http_client.py
       maxFeePerGasBigNumber,
       maxPriorityFeePerGasBigNumber,
       req.allowedSlippage
@@ -334,7 +334,7 @@ export async function trade(
       uniswapish.ttl,
       uniswapish.routerAbi,
       gasLimitTransaction,
-      req.nonce,
+      req.nonce,   // ##@@##
       maxFeePerGasBigNumber,
       maxPriorityFeePerGasBigNumber
     );

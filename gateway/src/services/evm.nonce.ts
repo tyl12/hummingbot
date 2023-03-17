@@ -445,7 +445,7 @@ export class EVMNonceManager extends ReferenceCountingCloseable {
   ): Promise<any> {
     let nextNonce: number;
     if (nonce === undefined) {
-      nextNonce = await this.getNextNonce(ethAddress);
+      nextNonce = await this.getNextNonce(ethAddress);//##@@##
     } else {
       nextNonce = nonce;
     }
@@ -501,7 +501,7 @@ export class EVMNonceManager extends ReferenceCountingCloseable {
           );
           return;
         } else {
-          logger.error('Provided txNonce is < currentNonce');
+          logger.error('Provided txNonce is < currentNonce'); //##@@##      txNonce(52) < currentNonce(54)
           throw new InvalidNonceError(
             INVALID_NONCE_ERROR_MESSAGE +
               `txNonce(${txNonce}) < currentNonce(${

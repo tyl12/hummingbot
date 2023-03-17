@@ -952,7 +952,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
             maker_exchange_trade_id = maker_exchange_trade_ids[0]
 
             if self.is_gateway_market(market_pair.taker):  # taker是 DEX
-                order_price = await market_pair.taker.market.get_order_price( # taker报价; same as  taker_market.get_order_price();
+                order_price = await market_pair.taker.market.get_order_price( # taker报价; same as  taker_market.get_order_price(); ##@@## gateway_evm_amm.py, 计入了 fee ，但是未计入 slippage时的 amountout/amountin
                     taker_trading_pair,
                     False,
                     quantized_hedge_amount)
@@ -1004,7 +1004,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
             taker_slippage_adjustment_factor = Decimal("1") + self.slippage_buffer
 
             if self.is_gateway_market(market_pair.taker):
-                taker_price = await market_pair.taker.market.get_order_price(  ##@@## gateway_evm_amm.py
+                taker_price = await market_pair.taker.market.get_order_price(  
                     taker_trading_pair,
                     True,
                     sell_fill_quantity / base_rate
@@ -1830,8 +1830,9 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
                 ##@@##    safe_ensure_future() 内部会通过 safe_ensure_future() 创建一个下单task 协程
             try:                                                                        ## strategy_base:: buy_with_specific_market() 内部会调用 self._sb_order_tracker.c_start_tracking_limit_order() 记录订单状态; 订单会被放入 _sb_order_tracker._tracked_limit_orders
                 order_id = self.buy_with_specific_market(market_info, amount,           ## => exchnage_py_base.py::buy()/_create_order() => binance_exchange.py:: _place_order()
-                                                         order_type=order_type, price=price,
+                                                         order_type=order_type, price=price,  ##@@## price ： 对于gateway, 计入了fee,未考虑slippage
                                                          expiration_seconds=expiration_seconds) ##@@## 调用基类函数进行下单操作，同时，基类内部会进行order tracker; 下单返回 order_id, 为hummingbot 框架内部生成的 client_order_id
+                    ##@@## gateway_evm_amm.py :: buy()
             except ValueError as e:
                 self.logger().warning(f"Placing an order on market {str(market_info.market.name)} "
                                       f"failed with the following error: {str(e)}")

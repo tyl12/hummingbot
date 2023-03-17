@@ -186,7 +186,7 @@ export class Sushiswap implements Uniswapish {
 
     const pair: Pair = await this.fetchData(baseToken, quoteToken);
 
-    const trades: Trade<Token, Token, TradeType.EXACT_INPUT>[] =
+    const trades: Trade<Token, Token, TradeType.EXACT_INPUT>[] =        // ##@@## TradeType.EXACT_INPUT
       Trade.bestTradeExactIn([pair], nativeTokenAmount, quoteToken, {
         maxHops: 1,
       });
@@ -200,7 +200,7 @@ export class Sushiswap implements Uniswapish {
         `${trades[0].executionPrice.toFixed(6)}` +
         `${baseToken.name}.`
     );
-    const expectedAmount = trades[0].minimumAmountOut(
+    const expectedAmount = trades[0].minimumAmountOut(  //##@@## 计入滑点后的输出量
       this.getSlippagePercentage()
     );
 
@@ -216,7 +216,7 @@ export class Sushiswap implements Uniswapish {
 
     const pair: Pair = await this.fetchData(quoteToken, baseToken);
 
-    const trades: Trade<Token, Token, TradeType.EXACT_OUTPUT>[] =
+    const trades: Trade<Token, Token, TradeType.EXACT_OUTPUT>[] =   // ##@@## TradeType.EXACT_OUTPUT
       Trade.bestTradeExactOut([pair], quoteToken, nativeTokenAmount, {
         maxHops: 1,
       });
@@ -260,7 +260,7 @@ export class Sushiswap implements Uniswapish {
     ttl: number,
     abi: ContractInterface,
     gasLimit: number,
-    nonce?: number,
+    nonce?: number, //##@@## called fraom gateway_http_client.py,  nonce 可能是空
     maxFeePerGas?: BigNumber,
     maxPriorityFeePerGas?: BigNumber
   ): Promise<Transaction> {
@@ -270,7 +270,7 @@ export class Sushiswap implements Uniswapish {
       allowedSlippage: this.getSlippagePercentage(),
     });
     const contract: Contract = new Contract(sushswapRouter, abi, wallet);
-    return this.chain.nonceManager.provideNonce(
+    return this.chain.nonceManager.provideNonce(  //##@@## ！！！
       nonce,
       wallet.address,
       async (nextNonce) => {
