@@ -733,9 +733,9 @@ cdef class PureMarketMakingStrategy(StrategyBase): //##@@##
             cdef object proposal
         try:
             if not self._all_markets_ready:
-                self._all_markets_ready = all([market.ready for market in self._sb_markets])
+                self._all_markets_ready = all([market.ready for market in self._sb_markets]) ## TODO: 添加 taker;  _sb_markets 是在基类strategy_base.pyx 中， c_add_markets()添加进去的
                 if self._asset_price_delegate is not None and self._all_markets_ready:
-                    self._all_markets_ready = self._asset_price_delegate.ready
+                    self._all_markets_ready = self._asset_price_delegate.ready  ## 外部询价接口正常
                 if not self._all_markets_ready:
                     # Markets not ready yet. Don't do anything.
                     if should_report_warnings:
@@ -748,22 +748,22 @@ cdef class PureMarketMakingStrategy(StrategyBase): //##@@##
                                           f"making may be dangerous when markets or networks are unstable.")
 
             proposal = None
-            if self._create_timestamp <= self._current_timestamp:
+            if self._create_timestamp <= self._current_timestamp: # _create_timestamp 记录了下次允许创建订单时间
                 # 1. Create base order proposals
-                proposal = self.c_create_base_proposal() ##@@##
+                proposal = self.c_create_base_proposal() ##@@## 按照 _order_level_spread， _order_level_amount， 从中间价开始，向外均匀构建买卖订单
                 # 2. Apply functions that limit numbers of buys and sells proposal
-                self.c_apply_order_levels_modifiers(proposal)
+                self.c_apply_order_levels_modifiers(proposal) ##@@## 按照price_band 调整ceiling/floor 价格， pingpong 串行化
                 # 3. Apply functions that modify orders price
-                self.c_apply_order_price_modifiers(proposal)
+                self.c_apply_order_price_modifiers(proposal) ## 按照 _bid_order_optimization_depth 初始深度优化，调整各级订单报价; 加入 fee
                 # 4. Apply functions that modify orders size
-                self.c_apply_order_size_modifiers(proposal)
+                self.c_apply_order_size_modifiers(proposal)  ##@@## ???
                 # 5. Apply budget constraint, i.e. can't buy/sell more than what you have.
                 self.c_apply_budget_constraint(proposal)
 
                 if not self._take_if_crossed:
-                    self.c_filter_out_takers(proposal)
+                    self.c_filter_out_takers(proposal) ## 去除订单中，和orderbook出现重合的订单，避免出现直接的taker订单
 
-            self._hanging_orders_tracker.process_tick()
+            self._hanging_orders_tracker.process_tick() ##@@## !!! 删除价格偏移过大的订单（订单价格超过中心价一定百分比） ; 删除超过最大生命期的订单
 
             self.c_cancel_active_orders_on_max_age_limit()
             self.c_cancel_active_orders(proposal)
@@ -780,13 +780,13 @@ cdef class PureMarketMakingStrategy(StrategyBase): //##@@##
             list buys = []
             list sells = []
 
-        buy_reference_price = sell_reference_price = self.get_price()
+        buy_reference_price = sell_reference_price = self.get_price() # 买卖参考价， 外部
 
         if self._inventory_cost_price_delegate is not None:
             inventory_cost_price = self._inventory_cost_price_delegate.get_price()
             if inventory_cost_price is not None:
                 # Only limit sell price. Buy are always allowed.
-                sell_reference_price = max(inventory_cost_price, sell_reference_price)
+                sell_reference_price = max(inventory_cost_price, sell_reference_price) ## 库存成本价， 外部参考价， 较大者
             else:
                 base_balance = float(market.get_balance(self._market_info.base_asset))
                 if base_balance > 0:
@@ -795,8 +795,8 @@ cdef class PureMarketMakingStrategy(StrategyBase): //##@@##
         # First to check if a customized order override is configured, otherwise the proposal will be created according
         # to order spread, amount, and levels setting.
         order_override = self._order_override
-        if order_override is not None and len(order_override) > 0:
-            for key, value in order_override.items():
+        if order_override is not None and len(order_override) > 0: # skip this path
+            for key, value in order_override.items():   ## [["buy", 0.01, 150], ["buy", 0.03, 400] , ["sell", 0.02, 200]] , 手动指定订单， 用于调试
                 if str(value[0]) in ["buy", "sell"]:
                     if str(value[0]) == "buy" and not buy_reference_price.is_nan():
                         price = buy_reference_price * (Decimal("1") - Decimal(str(value[1])) / Decimal("100"))
@@ -815,9 +815,9 @@ cdef class PureMarketMakingStrategy(StrategyBase): //##@@##
         else:
             if not buy_reference_price.is_nan():
                 for level in range(0, self._buy_levels):
-                    price = buy_reference_price * (Decimal("1") - self._bid_spread - (level * self._order_level_spread))
+                    price = buy_reference_price * (Decimal("1") - self._bid_spread - (level * self._order_level_spread)) ## 从中间价向外均匀分布
                     price = market.c_quantize_order_price(self.trading_pair, price)
-                    size = self._order_amount + (self._order_level_amount * level)
+                    size = self._order_amount + (self._order_level_amount * level) ## 订单量均匀递减/增
                     size = market.c_quantize_order_amount(self.trading_pair, size)
                     if size > 0:
                         buys.append(PriceSize(price, size))
@@ -830,7 +830,7 @@ cdef class PureMarketMakingStrategy(StrategyBase): //##@@##
                     if size > 0:
                         sells.append(PriceSize(price, size))
 
-        return Proposal(buys, sells)
+        return Proposal(buys, sells) ## 买卖订单列表，  buys: List[PriceSize], sells: List[PriceSize])
 
     cdef tuple c_get_adjusted_available_balance(self, list orders):
         """
@@ -850,10 +850,10 @@ cdef class PureMarketMakingStrategy(StrategyBase): //##@@##
 
         return base_balance, quote_balance
 
-    cdef c_apply_order_levels_modifiers(self, proposal):
-        self.c_apply_price_band(proposal)
+    cdef c_apply_order_levels_modifiers(self, proposal): ##@@## 1
+        self.c_apply_price_band(proposal) # 检查ceiling/floor价格
         if self.moving_price_band_enabled:
-            self.c_apply_moving_price_band(proposal)
+            self.c_apply_moving_price_band(proposal) ## 动态调整 ceiling/floor价格
         if self._ping_pong_enabled:
             self.c_apply_ping_pong(proposal)
 
@@ -865,14 +865,14 @@ cdef class PureMarketMakingStrategy(StrategyBase): //##@@##
 
     cdef c_apply_moving_price_band(self, proposal):
         price = self.get_price()
-        self._moving_price_band.check_and_update_price_band(
+        self._moving_price_band.check_and_update_price_band( ## 间隔price_band_refresh_time， 根据当前价格和比例配置，调整上下价格区间
             self.current_timestamp, price)
-        if self._moving_price_band.check_price_ceiling_exceeded(price):
+        if self._moving_price_band.check_price_ceiling_exceeded(price): ## 按照新的band,检查价格
             proposal.buys = []
         if self._moving_price_band.check_price_floor_exceeded(price):
             proposal.sells = []
 
-    cdef c_apply_ping_pong(self, object proposal):
+    cdef c_apply_ping_pong(self, object proposal):  ##@@## ！！！买卖串行
         self._ping_pong_warning_lines = []
         if self._filled_buys_balance == self._filled_sells_balance:
             self._filled_buys_balance = self._filled_sells_balance = 0
@@ -929,7 +929,7 @@ cdef class PureMarketMakingStrategy(StrategyBase): //##@@##
             sell.size = size
 
     def adjusted_available_balance_for_orders_budget_constrain(self):
-        candidate_hanging_orders = self.hanging_orders_tracker.candidate_hanging_orders_from_pairs()
+        candidate_hanging_orders = self.hanging_orders_tracker.candidate_hanging_orders_from_pairs()  ###@@## ???
         non_hanging = []
         if self.market_info in self._sb_order_tracker.get_limit_orders():
             all_orders = self._sb_order_tracker.get_limit_orders()[self.market_info].values()
@@ -987,10 +987,10 @@ cdef class PureMarketMakingStrategy(StrategyBase): //##@@##
             list new_sells = []
         top_ask = market.c_get_price(self.trading_pair, True)
         if not top_ask.is_nan():
-            proposal.buys = [buy for buy in proposal.buys if buy.price < top_ask]
+            proposal.buys = [buy for buy in proposal.buys if buy.price < top_ask]  ##@@## 保留报价小于 top卖单的订单
         top_bid = market.c_get_price(self.trading_pair, False)
         if not top_bid.is_nan():
-            proposal.sells = [sell for sell in proposal.sells if sell.price > top_bid]
+            proposal.sells = [sell for sell in proposal.sells if sell.price > top_bid] ##@@## 保留报价大于 top 买单的订单
 
     # Compare the market price with the top bid and top ask price
     cdef c_apply_order_optimization(self, object proposal):
@@ -1018,7 +1018,7 @@ cdef class PureMarketMakingStrategy(StrategyBase): //##@@##
 
             # If the price_above_bid is lower than the price suggested by the top pricing proposal,
             # lower the price and from there apply the order_level_spread to each order in the next levels
-            proposal.buys = sorted(proposal.buys, key = lambda p: p.price, reverse = True)
+            proposal.buys = sorted(proposal.buys, key = lambda p: p.price, reverse = True) ## 报价排序
             lower_buy_price = min(proposal.buys[0].price, price_above_bid)
             for i, proposed in enumerate(proposal.buys):
                 if self._split_order_levels_enabled:
@@ -1026,7 +1026,7 @@ cdef class PureMarketMakingStrategy(StrategyBase): //##@@##
                                               * (1 - self._bid_order_level_spreads[i] / Decimal("100"))
                                               / (1-self._bid_order_level_spreads[0] / Decimal("100")))
                     continue
-                proposal.buys[i].price = market.c_quantize_order_price(self.trading_pair, lower_buy_price) * (1 - self.order_level_spread * i)
+                proposal.buys[i].price = market.c_quantize_order_price(self.trading_pair, lower_buy_price) * (1 - self.order_level_spread * i) ## 从较小的最高报价开始，调整各个级别的报价
 
         if len(proposal.sells) > 0:
             # Get the top ask price in the market using order_optimization_depth and your sell order volume

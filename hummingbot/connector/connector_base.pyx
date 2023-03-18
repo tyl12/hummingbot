@@ -350,8 +350,8 @@ cdef class ConnectorBase(NetworkIterator):
         :param currency: The currency (token) name
         :returns: Balance available for trading for the specified currency
         """
-        available_balance = self._account_available_balances.get(currency, s_decimal_0)
-        if not self._real_time_balance_update:
+        available_balance = self._account_available_balances.get(currency, s_decimal_0)  
+        if not self._real_time_balance_update: ##@@##  exchanger是否能提供实时 balance 信息，如果不能提供，则基于上一次的snapshot,计入balance的更新后，计算出当前balance
             available_balance = self.apply_balance_update_since_snapshot(currency, available_balance)
         balance_limits = self.get_exchange_limit_config(self.name)
         if currency in balance_limits:

@@ -243,11 +243,11 @@ class HangingOrdersTracker:
             self.orders_being_renewed = self.orders_being_renewed.union(to_be_cancelled)
 
     def remove_orders_far_from_price(self):
-        current_price = self.strategy.get_price()
+        current_price = self.strategy.get_price()  ##@@## 通过strategy 反向获取报价
         orders_to_be_removed = set()
         for order in self.original_orders:
             if (order.client_order_id not in self.orders_being_cancelled
-                    and abs(order.price - current_price) / current_price > self._hanging_orders_cancel_pct):
+                    and abs(order.price - current_price) / current_price > self._hanging_orders_cancel_pct): ## 订单价格超过中心价一定百分比，取消
                 self.logger().info(
                     f"Hanging order passed max_distance from price={self._hanging_orders_cancel_pct * 100}% {order}. Removing...")
                 orders_to_be_removed.add(order)
@@ -342,11 +342,11 @@ class HangingOrdersTracker:
                 new_hanging_orders.add(order)
         return new_hanging_orders
 
-    def _cancel_multiple_orders_in_strategy(self, order_ids: List[str]):
+    def _cancel_multiple_orders_in_strategy(self, order_ids: List[str]): ## 取消指定订单
         for order_id in order_ids:
-            if any(o.client_order_id == order_id for o in self.strategy.active_orders):
+            if any(o.client_order_id == order_id for o in self.strategy.active_orders):  ##@@## ？？？
                 self.strategy.cancel_order(order_id)
-                self.orders_being_cancelled.add(order_id)
+                self.orders_being_cancelled.add(order_id) ## 添加到orders_being_cancelled 中，当 受到 order_canceled消息后，会请理
 
     def _get_equivalent_orders_no_aggregation(self, orders):
         return frozenset(self._get_hanging_order_from_limit_order(o) for o in orders)
