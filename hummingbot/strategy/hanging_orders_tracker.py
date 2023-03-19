@@ -100,9 +100,9 @@ class HangingOrdersTracker:
                           market: ConnectorBase,
                           event: OrderCancelledEvent):
 
-        self._process_cancel_as_part_of_renew(event)
+        self._process_cancel_as_part_of_renew(event)  ##@@## 处理cancel order中计入的 renew_order_list， order已经被cancel掉了， 可以创建新订单
 
-        self.orders_being_cancelled.discard(event.order_id)
+        self.orders_being_cancelled.discard(event.order_id) ##@@## 
         order_to_be_removed = next((order for order in self.strategy_current_hanging_orders
                                     if order.order_id == event.order_id), None)
         if order_to_be_removed:
@@ -166,11 +166,11 @@ class HangingOrdersTracker:
 
         This method should be called on each clock tick.
         """
-        self.remove_orders_far_from_price()
-        self.renew_hanging_orders_past_max_order_age()
+        self.remove_orders_far_from_price() ##@@## 删除和当前参考报价偏移过大的订单
+        self.renew_hanging_orders_past_max_order_age() ##@@## 异步 cancel 超时订单，并将被cancel的订单放入待renew清单
 
-    def _process_cancel_as_part_of_renew(self, event: OrderCancelledEvent):
-        renewing_order = next((order for order in self.orders_being_renewed if order.order_id == event.order_id), None)
+    def _process_cancel_as_part_of_renew(self, event: OrderCancelledEvent): ##@@## did_cancel_order() 回调中执行，
+        renewing_order = next((order for order in self.orders_being_renewed if order.order_id == event.order_id), None)  ##@@##   orders_being_renewed 是超过max_age被取消的订单列表
         if renewing_order:
             self.logger().info(f"({self.trading_pair}) Hanging order {event.order_id} "
                                f"has been canceled as part of the renew process. "
@@ -193,7 +193,7 @@ class HangingOrdersTracker:
                     self.add_order(limit_order_from_hanging_order)
 
     def add_order(self, order: LimitOrder):
-        self.original_orders.add(order)
+        self.original_orders.add(order) ##@@##
 
     def add_as_hanging_order(self, order: LimitOrder):
         self.strategy_current_hanging_orders.add(self._get_hanging_order_from_limit_order(order))
@@ -230,7 +230,7 @@ class HangingOrdersTracker:
                 if hanging_order.creation_timestamp
                 else -1)
 
-    def renew_hanging_orders_past_max_order_age(self):
+    def renew_hanging_orders_past_max_order_age(self): ##@@## 检查超时订单，放入cancel列表后执行cancel操作，然后放入 待更新列表
         to_be_cancelled: Set[HangingOrder] = set()
         max_order_age = getattr(self.strategy, "max_order_age", None)
         if max_order_age:
@@ -342,7 +342,7 @@ class HangingOrdersTracker:
                 new_hanging_orders.add(order)
         return new_hanging_orders
 
-    def _cancel_multiple_orders_in_strategy(self, order_ids: List[str]): ## 取消指定订单
+    def _cancel_multiple_orders_in_strategy(self, order_ids: List[str]): ##@@## ！！！ 取消指定订单， 异步发送cancel 命令，并计入 orders_being_cancelled 列表， 不等待
         for order_id in order_ids:
             if any(o.client_order_id == order_id for o in self.strategy.active_orders):  ##@@## ？？？
                 self.strategy.cancel_order(order_id)

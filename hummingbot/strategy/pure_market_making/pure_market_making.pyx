@@ -262,7 +262,7 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
 
     @property
     def hanging_orders_enabled(self) -> bool:
-        return self._hanging_orders_enabled
+        return self._hanging_orders_enabled   ##@@## ？？？ what is hanging order ?????
 
     @hanging_orders_enabled.setter
     def hanging_orders_enabled(self, value: bool):
@@ -709,7 +709,7 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
 
         if self._hanging_orders_enabled:
             # start tracking any restored limit order
-            restored_order_ids = self.c_track_restored_orders(self.market_info)
+            restored_order_ids = self.c_track_restored_orders(self.market_info)  ##@@## ？？？？？
             # make restored order hanging orders
             for order_id in restored_order_ids:
                 order = next(o for o in self.market_info.market.limit_orders if o.client_order_id == order_id)
@@ -763,12 +763,12 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
                 if not self._take_if_crossed:
                     self.c_filter_out_takers(proposal) ## 去除订单中，和orderbook出现重合的订单，避免出现直接的taker订单
 
-            self._hanging_orders_tracker.process_tick() ##@@## !!! 删除价格偏移过大的订单（订单价格超过中心价一定百分比） ; 删除超过最大生命期的订单
+            self._hanging_orders_tracker.process_tick() ##@@## !!! 删除价格偏移过大的订单（订单价格超过中心价一定百分比） ; 删除超过最大生命期的订单，（内部did_cancel_order回调中，会重新renew)
 
-            self.c_cancel_active_orders_on_max_age_limit()
+            self.c_cancel_active_orders_on_max_age_limit() ##@@## 取消 超过 _max_order_age 的订单，异步
             self.c_cancel_active_orders(proposal)
-            self.c_cancel_orders_below_min_spread()
-            if self.c_to_create_orders(proposal):
+            self.c_cancel_orders_below_min_spread() ##@@## 取消 active_orders 中和当前报价偏移超过 minimum_spread 的订单
+            if self.c_to_create_orders(proposal): ##@@@## 检查是否可以创建订单（1. 满足create_timestamp要求，2. 所有取消订单事件都完成-如果配置了）
                 self.c_execute_orders_proposal(proposal)
         finally:
             self._last_timestamp = timestamp
@@ -980,7 +980,7 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
 
         proposal.sells = [o for o in proposal.sells if o.size > 0]
 
-    cdef c_filter_out_takers(self, object proposal):
+    cdef c_filter_out_takers(self, object proposal): ## 去除订单中，和orderbook出现重合的订单，避免出现直接的taker订单
         cdef:
             ExchangeBase market = self._market_info.market
             list new_buys = []
@@ -1065,10 +1065,10 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
             price = sell.price * (Decimal(1) + fee.percent)
             sell.price = market.c_quantize_order_price(self.trading_pair, price)
 
-    cdef c_did_fill_order(self, object order_filled_event):
+    cdef c_did_fill_order(self, object order_filled_event): ##@@##
         cdef:
             str order_id = order_filled_event.order_id
-            object market_info = self._sb_order_tracker.c_get_shadow_market_pair_from_order_id(order_id)
+            object market_info = self._sb_order_tracker.c_get_shadow_market_pair_from_order_id(order_id)  ##@@##??? what is shadow order ????
             tuple order_fill_record
 
         if market_info is not None:
@@ -1091,7 +1091,7 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
                     )
 
             if self._inventory_cost_price_delegate is not None:
-                self._inventory_cost_price_delegate.process_order_fill_event(order_filled_event)
+                self._inventory_cost_price_delegate.process_order_fill_event(order_filled_event) ##@@## ????
 
 
     cdef c_did_create_buy_order(self, object order_created_event):
@@ -1124,8 +1124,8 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
                 return
 
         # delay order creation by filled_order_dalay (in seconds)
-        self._create_timestamp = self._current_timestamp + self._filled_order_delay
-        self._cancel_timestamp = min(self._cancel_timestamp, self._create_timestamp)
+        self._create_timestamp = self._current_timestamp + self._filled_order_delay  ##@@## buy/sell订单完全吃掉后，需要等待多少时间再下新单
+        self._cancel_timestamp = min(self._cancel_timestamp, self._create_timestamp)  #？？？？？
 
         self._filled_buys_balance += 1
         self._last_own_trade_price = limit_order_record.price
@@ -1201,7 +1201,7 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
 
         if active_orders and any(order_age(o, self._current_timestamp) > self._max_order_age for o in active_orders):
             for order in active_orders:
-                self.c_cancel_order(self._market_info, order.client_order_id)
+                self.c_cancel_order(self._market_info, order.client_order_id) ##@@## !!! 基类
 
     cdef c_cancel_active_orders(self, object proposal):
         """
@@ -1244,18 +1244,24 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
             list active_orders = self.market_info_to_active_orders.get(self._market_info, [])
             object price = self.get_price()
         active_orders = [order for order in active_orders
-                         if order.client_order_id not in self.hanging_order_ids]
+                         if order.client_order_id not in self.hanging_order_ids]  ##@@## ？？？  active_orders, hanging_order_ids 分别代表 ？？？？
         for order in active_orders:
             negation = -1 if order.is_buy else 1
-            if (negation * (order.price - price) / price) < self._minimum_spread:
+            if (negation * (order.price - price) / price) < self._minimum_spread: # abs()
                 self.logger().info(f"Order is below minimum spread ({self._minimum_spread})."
                                    f" Canceling Order: ({'Buy' if order.is_buy else 'Sell'}) "
                                    f"ID - {order.client_order_id}")
                 self.c_cancel_order(self._market_info, order.client_order_id)
 
-    cdef bint c_to_create_orders(self, object proposal):
+##@@## 检查当前是否可以创建订单：
+"""
+    1. 当前时间超过了create_timestamp,
+    2. 是否需要等待订单取消确认， 如果需要，则检查 in_flight_cancels， 记录了所有等待cancel的订单
+    3. ？？？
+"""
+    cdef bint c_to_create_orders(self, object proposal): 
         non_hanging_orders_non_cancelled = [o for o in self.active_non_hanging_orders if not
-                                            self._hanging_orders_tracker.is_potential_hanging_order(o)]
+                                            self._hanging_orders_tracker.is_potential_hanging_order(o)]  ##@@## ？？？？？
         return (self._create_timestamp < self._current_timestamp
                 and (not self._should_wait_order_cancel_confirmation or
                      len(self._sb_order_tracker.in_flight_cancels) == 0)
@@ -1285,11 +1291,11 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
                     buy.size,
                     order_type=self._limit_order_type,
                     price=buy.price,
-                    expiration_seconds=expiration_seconds
+                    expiration_seconds=expiration_seconds    ##@@## ???
                 )
                 orders_created = True
                 if idx < number_of_pairs:
-                    order = next((o for o in self.active_orders if o.client_order_id == bid_order_id))
+                    order = next((o for o in self.active_orders if o.client_order_id == bid_order_id))   ##@@## ?????
                     if order:
                         self._hanging_orders_tracker.add_current_pairs_of_proposal_orders_executed_by_strategy(
                             CreatedPairOfOrders(order, None))
@@ -1318,7 +1324,9 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
         if orders_created:
             self.set_timers()
 
-    cdef set_timers(self):
+##@@## 创建订单事件发生后，会调用该方法，将下次订单的允许创建时间点 _create_timestamp 从当前时间上后移 _order_refresh_time; 
+#    如果本次还没有超过上一次的_create_timestamp，则不动
+    cdef set_timers(self): 
         cdef double next_cycle = self._current_timestamp + self._order_refresh_time
         if self._create_timestamp <= self._current_timestamp:
             self._create_timestamp = next_cycle

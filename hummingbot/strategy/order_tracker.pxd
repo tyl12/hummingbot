@@ -43,20 +43,20 @@ cdef class OrderTracker(TimeIterator):
 
 ##
 
-MarketOrder(
-            order_id,
-            market_pair.trading_pair,
-            is_buy,
-            market_pair.base_asset,
-            market_pair.quote_asset,
-            float(quantity),
-            self._current_timestamp
-        )
-LimitOrder(order_id,
-            market_pair.trading_pair,
-            is_buy,
-            market_pair.base_asset,
-            market_pair.quote_asset,
-            price,
-            quantity,
-            creation_timestamp=int(self._current_timestamp * 1e6))
+# MarketOrder(
+#             order_id,
+#             market_pair.trading_pair,
+#             is_buy,
+#             market_pair.base_asset,
+#             market_pair.quote_asset,
+#             float(quantity),
+#             self._current_timestamp
+#         )
+# LimitOrder(order_id,
+#             market_pair.trading_pair,
+#             is_buy,
+#             market_pair.base_asset,
+#             market_pair.quote_asset,
+#             price,
+#             quantity,
+#             creation_timestamp=int(self._current_timestamp * 1e6))
