@@ -69,7 +69,7 @@ cdef class OrderIDMarketPairTracker(TimeIterator):
     def stop_tracking_order_id(self, order_id: str):
         self.c_stop_tracking_order_id(order_id)
 
-    cdef c_check_and_expire_tracking_items(self):
+    cdef c_check_and_expire_tracking_items(self):  #????
         cdef:
             list order_ids_to_delete = []
             OrderIDMarketPairTrackingItem typed_tracking_item
@@ -82,7 +82,7 @@ cdef class OrderIDMarketPairTracker(TimeIterator):
                 break
 
         for order_id in order_ids_to_delete:
-            del self._order_id_to_tracking_item[order_id]
+            del self._order_id_to_tracking_item[order_id]  ##@@@
 
     def check_and_expire_tracking_items(self):
         self.c_check_and_expire_tracking_items()

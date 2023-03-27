@@ -720,8 +720,8 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
         self._hanging_orders_tracker.unregister_events(self.active_markets)
         StrategyBase.c_stop(self, clock)
 
-
-    ##@@## If you're reading or writing a strategy module, the c_tick() function should be treated as the entry point of a strategy module. If you're reading a strategy module's code, c_tick() should be where you start. If you're writing a new strategy module, c_tick() is also going to where you start writing the important bits of your strategy.
+    ##@@## If you're reading or writing a strategy module, the c_tick() function should be treated as the entry point of a strategy module. 
+    ##@@## If you're reading a strategy module's code, c_tick() should be where you start. If you're writing a new strategy module, c_tick() is also going to where you start writing the important bits of your strategy.
     cdef c_tick(self, double timestamp):  ##@@## a running strategy module is called every second via its c_tick() method to check on the markets and wallets,
         StrategyBase.c_tick(self, timestamp)
 
@@ -768,7 +768,7 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
             self.c_cancel_active_orders_on_max_age_limit() ##@@## 取消 超过 _max_order_age 的订单，异步
             self.c_cancel_active_orders(proposal)
             self.c_cancel_orders_below_min_spread() ##@@## 取消 active_orders 中和当前报价偏移超过 minimum_spread 的订单
-            if self.c_to_create_orders(proposal): ##@@@## 检查是否可以创建订单（1. 满足create_timestamp要求，2. 所有取消订单事件都完成-如果配置了）
+            if self.c_to_create_orders(proposal): ##@@@## 检查是否可以创建订单（1. 满足create_timestamp要求，2. 所有取消订单事件都完成-如果配置了等待cancel事件）
                 self.c_execute_orders_proposal(proposal)
         finally:
             self._last_timestamp = timestamp
@@ -1211,7 +1211,7 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
             return
 
         cdef:
-            list active_orders = self.active_non_hanging_orders
+            list active_orders = self.active_non_hanging_orders   ##@@## ????? 
             list active_buy_prices = []
             list active_sells = []
             bint to_defer_canceling = False
@@ -1225,12 +1225,14 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
             proposal_buys = [buy.price for buy in proposal.buys]
             proposal_sells = [sell.price for sell in proposal.sells]
 
+            ##@@## 比较 当前active的买单价格和proposal_buy的价格， 如果两者长度不同，直接 cancel ;如果两者一一比较对应level价格的偏移，如果有任何一对价格 超过 _order_refresh_tolerance_pct， 则cancel;  否则，可以推迟cancel;
+            ##@@## 卖单同样比较；
             if self.c_is_within_tolerance(active_buy_prices, proposal_buys) and \
-                    self.c_is_within_tolerance(active_sell_prices, proposal_sells):
+                    self.c_is_within_tolerance(active_sell_prices, proposal_sells): 
                 to_defer_canceling = True
 
-        if not to_defer_canceling:
-            self._hanging_orders_tracker.update_strategy_orders_with_equivalent_orders()
+        if not to_defer_canceling: ##@@## 本次需要cancel订单，则cancel 所有的 !!!
+            self._hanging_orders_tracker.update_strategy_orders_with_equivalent_orders() ##@@## ???
             for order in self.active_non_hanging_orders:
                 # If is about to be added to hanging_orders then don't cancel
                 if not self._hanging_orders_tracker.is_potential_hanging_order(order):
@@ -1274,7 +1276,7 @@ cdef class PureMarketMakingStrategy(StrategyBase): ##@@##
             str bid_order_id, ask_order_id
             bint orders_created = False
         # Number of pair of orders to track for hanging orders
-        number_of_pairs = min((len(proposal.buys), len(proposal.sells))) if self._hanging_orders_enabled else 0
+        number_of_pairs = min((len(proposal.buys), len(proposal.sells))) if self._hanging_orders_enabled else 0     ##@@## hanging orders 只会针对对称的挂单
 
         if len(proposal.buys) > 0:
             if self._logging_options & self.OPTION_LOG_CREATE_ORDER:

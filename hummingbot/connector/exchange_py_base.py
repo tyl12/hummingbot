@@ -846,21 +846,7 @@ class ExchangePyBase(ExchangeBase, ABC):
         trading_rules_list = await self._format_trading_rules(exchange_info)
         self._trading_rules.clear()
         for trading_rule in trading_rules_list:
-            self._trading_rules[trading_rule.trading_pair] = trading_rule
-        self._initialize_trading_pair_symbols_from_exchange_info(exchange_info=exchange_info)
-
-    async def _api_get(self, *args, **kwargs):
-        self.logger().error(f"##@@## exchange_py_base: _api_get, name:{threading.current_thread().name}, id:{threading.get_ident()}")
-        kwargs["method"] = RESTMethod.GET
-        return await self._api_request(*args, **kwargs)
-
-    async def _api_post(self, *args, **kwargs):
-        self.logger().error(f"##@@## exchange_py_base: _api_post, name:{threading.current_thread().name}, id:{threading.get_ident()}")
-        kwargs["method"] = RESTMethod.POST
-        return await self._api_request(*args, **kwargs)
-
-    async def _api_put(self, *args, **kwargs):
-        kwargs["method"] = RESTMethod.PUT
+            self._trading_rules[trading_rule.tradingin_flight_orders
         return await self._api_request(*args, **kwargs)
 
     async def _api_delete(self, *args, **kwargs):

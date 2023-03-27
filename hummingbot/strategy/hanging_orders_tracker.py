@@ -247,7 +247,7 @@ class HangingOrdersTracker:
         orders_to_be_removed = set()
         for order in self.original_orders:
             if (order.client_order_id not in self.orders_being_cancelled
-                    and abs(order.price - current_price) / current_price > self._hanging_orders_cancel_pct): ## 订单价格超过中心价一定百分比，取消
+                    and abs(order.price - current_price) / current_price > self._hanging_orders_cancel_pct): ## 订单价格超过中心价一定百分比，取消 => 认为价格偏差过大，价格可能很难回归到当前的挂单价
                 self.logger().info(
                     f"Hanging order passed max_distance from price={self._hanging_orders_cancel_pct * 100}% {order}. Removing...")
                 orders_to_be_removed.add(order)
@@ -264,7 +264,7 @@ class HangingOrdersTracker:
         """Creates a list of `HangingOrder`s from the registered `LimitOrder`s."""
         return self._get_equivalent_orders()
 
-    def is_order_id_in_hanging_orders(self, order_id: str) -> bool:
+    def is_order_id_in_hanging_orders(self, order_id: str) -> bool: ##@@##
         return any((o.order_id == order_id for o in self.strategy_current_hanging_orders))
 
     def is_order_id_in_completed_hanging_orders(self, order_id: str) -> bool:

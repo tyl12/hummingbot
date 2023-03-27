@@ -1847,7 +1847,7 @@ class CrossExchangeMarketMakingStrategy(StrategyPyBase):
             return
         self._sb_order_tracker.add_create_order_pending(order_id)       ## place order时添加到记录，did_create_buy/sell_order()回调中，会清理记录; 从而记录中保持着向exchange提交的还未确认的订单
         self._market_pair_tracker.start_tracking_order_id(order_id, market_info.market, market_pair)  ## 记录 market_pair, exchange, order_id信息
-        if is_maker:  ##@@## 如果是maker， 则初始化 _maker_to_taker_order_ids 
+        if is_maker:  ##@@## 如果是maker， 则初始化 _maker_to_taker_order_ids
             self._maker_to_taker_order_ids[order_id] = []
         else:   ## 对冲的 taker 单
             self._taker_to_maker_order_ids[order_id] = maker_order_id ## 记录：当前taker单，对冲的原始maker单

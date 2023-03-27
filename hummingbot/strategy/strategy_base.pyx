@@ -595,7 +595,7 @@ cdef class StrategyBase(TimeIterator): ##@@##
                 logging.INFO,
                 f"({market_trading_pair_tuple.trading_pair}) Canceling the limit order {order_id}."
             )
-            market.c_cancel(market_trading_pair_tuple.trading_pair, order_id)
+            market.c_cancel(market_trading_pair_tuple.trading_pair, order_id)  ##@@## to hotbit exchange
 
     def cancel_order(self, market_trading_pair_tuple: MarketTradingPairTuple, order_id: str):
         self.c_cancel_order(market_trading_pair_tuple, order_id)
